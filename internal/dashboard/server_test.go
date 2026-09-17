@@ -14,9 +14,8 @@ import (
 
 func testApplication(t *testing.T) *application {
 	t.Helper()
-	t.Setenv("DASHBOARD_PASSWORD", "test-password-never-use-in-production")
 	ctx, cancel := context.WithCancel(t.Context())
-	app, err := newApplication(ctx, config{Host: "127.0.0.1", Port: "4318", Root: t.TempDir(), State: t.TempDir(), Home: t.TempDir()})
+	app, err := newApplication(ctx, config{Host: "127.0.0.1", Port: "4318", Root: t.TempDir(), State: t.TempDir(), Home: t.TempDir()}, "test-password-never-use-in-production")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +49,7 @@ func TestAuthenticationAndForwarding(t *testing.T) {
 			t.Fatal(host, r.Code)
 		}
 	}
-	for _, path := range []string{"/api/local", "/api/account", "/api/limits", "/.state/password", "/pricing.json"} {
+	for _, path := range []string{"/api/local", "/api/account", "/api/limits", "/.state-codex-tally/sessions.json", "/pricing.json"} {
 		if r := request("GET", path, "localhost:54734", "", "", ""); r.Code != 401 {
 			t.Fatal(path, r.Code)
 		}
@@ -80,8 +79,8 @@ func TestAuthenticationAndForwarding(t *testing.T) {
 	if r := request("GET", "/api/local?period=custom7d&end=2026-02-31", "localhost:54734", "", "", cookie.String()); r.Code != 400 {
 		t.Fatal("invalid period accepted")
 	}
-	if r := request("GET", "/.state/password", "localhost:54734", "", "", cookie.String()); r.Code != 404 {
-		t.Fatal("password file exposed")
+	if r := request("GET", "/.state-codex-tally/sessions.json", "localhost:54734", "", "", cookie.String()); r.Code != 404 {
+		t.Fatal("private cache exposed")
 	}
 	request("POST", "/api/logout", "localhost:54734", "", "", cookie.String())
 	if r := request("GET", "/api/local", "localhost:54734", "", "", cookie.String()); r.Code != 401 {
@@ -156,21 +155,22 @@ func TestAccountNormalizationAndIsolation(t *testing.T) {
 		t.Fatal("cache crossed accounts")
 	}
 }
-func TestExistingPassword(t *testing.T) {
-	t.Setenv("DASHBOARD_PASSWORD", "")
+func TestPasswordIgnoresLegacyFile(t *testing.T) {
 	state := t.TempDir()
 	path := filepath.Join(state, "password")
 	if err := os.WriteFile(path, []byte("existing-dashboard-password\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	app, err := newApplication(t.Context(), config{Host: "127.0.0.1", Port: "4318", Root: t.TempDir(), Home: t.TempDir(), State: state})
+	app, err := newApplication(t.Context(), config{Host: "127.0.0.1", Port: "4318", Root: t.TempDir(), Home: t.TempDir(), State: state}, "current-dashboard-password")
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest("POST", "http://localhost:4318/api/login", strings.NewReader(`{"password":"existing-dashboard-password"}`))
-	rr := httptest.NewRecorder()
-	app.handler().ServeHTTP(rr, req)
-	if rr.Code != 200 {
-		t.Fatal("existing password not accepted", rr.Code)
+	for password, status := range map[string]int{"existing-dashboard-password": 401, "current-dashboard-password": 200} {
+		req := httptest.NewRequest("POST", "http://localhost:4318/api/login", strings.NewReader(`{"password":"`+password+`"}`))
+		rr := httptest.NewRecorder()
+		app.handler().ServeHTTP(rr, req)
+		if rr.Code != status {
+			t.Fatalf("login status: got %d, want %d", rr.Code, status)
+		}
 	}
 }

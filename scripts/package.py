@@ -59,14 +59,14 @@ def main():
             name = f"codex-tally_{version}_{system}_{arch}"
             print(f"Building {name}", flush=True)
             with tempfile.TemporaryDirectory(prefix="codex-tally-") as temporary:
-                binary = Path(temporary) / ("codex-dashboard.exe" if system == "windows" else "codex-dashboard")
+                binary = Path(temporary) / ("codex-tally.exe" if system == "windows" else "codex-tally")
                 env = dict(os.environ, GOOS=system, GOARCH=arch, CGO_ENABLED="0")
                 subprocess.run(
-                    ["go", "build", "-trimpath", "-ldflags", f"-s -w -X main.buildVersion={version}", "-o", str(binary), "./cmd/codex-dashboard"],
+                    ["go", "build", "-trimpath", "-ldflags", f"-s -w -X main.buildVersion={version}", "-o", str(binary), "./cmd/codex-tally"],
                     cwd=ROOT, env=env, check=True,
                 )
                 binary.chmod(0o755)
-                # Explicit allowlist: never package .state, auth, or public usage snapshots.
+                # Explicit allowlist: never package .state-codex-tally, auth, or public usage snapshots.
                 files = [(binary, binary.name)] + [(ROOT / name, name) for name in (
                     "LICENSE", "README.md", "CONTRIBUTING.md", "SECURITY.md",
                     "docs/configuration.md", "docs/pages.md", "docs/scheduling.md",

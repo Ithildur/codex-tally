@@ -4,7 +4,7 @@
 
 Codex 登录凭证只由后端读取。浏览器不会获得 access token、account ID、邮箱或原始会话内容。账号查询发送到固定的 ChatGPT 接口；程序不修改 auth 或刷新 token。
 
-私有数据保存在可执行文件旁的 `.state`，可用 `DASHBOARD_STATE_DIR` 更改路径。不要把凭证、原始日志或状态目录提交到 Git。
+私有数据保存在可执行文件旁的 `.state-codex-tally`，可用 `DASHBOARD_STATE_DIR` 更改路径。不要把凭证、原始日志或状态目录提交到 Git。
 
 公开内容有两种来源：
 
@@ -16,6 +16,8 @@ Codex 登录凭证只由后端读取。浏览器不会获得 access token、acco
 ## 访问控制
 
 仪表盘默认只监听本机并要求密码。服务检查 Host、Origin，提供登录限速，登录 Cookie 使用 HttpOnly 和 SameSite。远程管理端要求配置 HTTPS；部署方式见[远程访问](docs/sharing.md)。
+
+未指定密码时，每次启动使用安全随机数生成新密码，启动成功后输出到控制台，不读写密码文件。指定 `DASHBOARD_PASSWORD` 时不打印密码。服务只保存密码的加盐哈希；如将控制台输出重定向到日志，生成的密码也会出现在该日志中。
 
 公开接口只读。分享 iframe 使用沙箱和内容安全策略，管理页面禁止嵌入。匿名访问无法触发本地扫描、调用私有账号接口或提交数据。
 

@@ -26,28 +26,32 @@ Apple Silicon 选择 `arm64`，Intel / AMD 64 位处理器选择 `amd64`。Relea
 ```bash
 git clone https://github.com/Ithildur/codex-tally.git
 cd codex-tally
-go build -trimpath -o codex-dashboard ./cmd/codex-dashboard
+go build -trimpath -o codex-tally ./cmd/codex-tally
 ```
 
-Windows 将输出文件名改为 `codex-dashboard.exe`。使用 Pages 同步时，请先 fork，再 clone 自己的仓库。
+Windows 将输出文件名改为 `codex-tally.exe`。使用 Pages 同步时，请先 fork，再 clone 自己的仓库。
 
 ## 快速开始
 
 在运行 Codex 的同一用户下启动：
 
 ```bash
-./codex-dashboard
+./codex-tally
 ```
 
-Windows PowerShell 使用 `.\codex-dashboard.exe`。打开 <http://localhost:4318>，用程序旁 `.state/password` 中的密码登录：
+Windows PowerShell 使用 `.\codex-tally.exe`。打开 <http://localhost:4318>，使用启动日志中的“本次登录密码”登录。每次启动都会生成新密码，不写入文件。
+
+需要固定密码时，设置 `DASHBOARD_PASSWORD`（至少 16 字符）：
 
 ```bash
-cat .state/password
+DASHBOARD_PASSWORD='your-fixed-password-at-least-16-chars' ./codex-tally
 ```
 
-PowerShell 使用 `Get-Content .state/password`。程序默认读取当前用户的 `.codex`，可通过 `CODEX_HOME` 指定其他目录。账号统计需要文件形式的 `auth.json`；本机统计不需要登录凭证。
+PowerShell 先设置 `$env:DASHBOARD_PASSWORD = '你的固定密码'` 再启动。指定的密码不会输出到日志。
 
-`./codex-dashboard --version` 查看版本。下载的程序运行时不需要 Go、Node 或 Python；`sync` 另需 Git 2.31+。
+程序默认读取当前用户的 `.codex`，可通过 `CODEX_HOME` 指定其他目录。账号统计需要文件形式的 `auth.json`；本机统计不需要登录凭证。
+
+`./codex-tally --version` 查看版本。下载的程序运行时不需要 Go、Node 或 Python；`sync` 另需 Git 2.31+。
 
 ## 发布到 GitHub Pages
 
@@ -56,7 +60,7 @@ PowerShell 使用 `Get-Content .state/password`。程序默认读取当前用户
 3. 将程序放到仓库目录，配置好 Git 身份和认证，在默认分支执行：
 
 ```bash
-./codex-dashboard sync
+./codex-tally sync
 ```
 
 默认公开本月 Token、调用次数和缓存率。模型明细需显式选择。同步只提交 `site/usage.json`，Pages 地址见 Actions 部署结果。

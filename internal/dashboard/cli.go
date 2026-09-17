@@ -28,7 +28,7 @@ func Run(args []string, version string) error {
 		return nil
 	}
 	if args[0] == "help" || args[0] == "--help" {
-		fmt.Println("codex-dashboard [export|sync|build-pages|version]\nNo command: start the local dashboard. Use COMMAND -h for options.")
+		fmt.Println("codex-tally [export|sync|build-pages|version]\nNo command: start the local dashboard. Use COMMAND -h for options.")
 		return nil
 	}
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
@@ -39,11 +39,11 @@ func Run(args []string, version string) error {
 			return err
 		}
 		root := flags.String("codex-home", "", "Codex directory (default CODEX_HOME or the current user's .codex)")
-		state := flags.String("state", cmp.Or(os.Getenv("DASHBOARD_STATE_DIR"), filepath.Join(filepath.Dir(exe), ".state")), "existing local cache directory (read only)")
+		state := flags.String("state", cmp.Or(os.Getenv("DASHBOARD_STATE_DIR"), filepath.Join(filepath.Dir(exe), ".state-codex-tally")), "existing local cache directory (read only)")
 		var output, repo, logPath string
 		if args[0] == "sync" {
 			flags.StringVar(&repo, "repo", ".", "Git working tree; sync owns only site/usage.json")
-			flags.StringVar(&logPath, "log", "", "append sync output to this file (use .state/sync.log for scheduled jobs)")
+			flags.StringVar(&logPath, "log", "", "append sync output to this file (use .state-codex-tally/sync.log for scheduled jobs)")
 		} else {
 			flags.StringVar(&output, "out", "site/usage.json", "public snapshot destination")
 		}

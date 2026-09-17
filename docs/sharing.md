@@ -15,7 +15,7 @@ ssh -L 4318:127.0.0.1:4318 用户名@服务器地址
 使用域名访问时，设置 HTTPS 地址并配置反向代理：
 
 ```bash
-PUBLIC_ORIGIN=https://usage.example.com ./codex-dashboard
+PUBLIC_ORIGIN=https://usage.example.com ./codex-tally
 ```
 
 Caddy：
@@ -31,7 +31,7 @@ usage.example.com {
 ## 开启匿名分享
 
 ```bash
-PUBLIC_SHARE=1 ./codex-dashboard
+PUBLIC_SHARE=1 ./codex-tally
 ```
 
 管理端仍需登录。公开内容为缓存所属月份的本机总 Token、调用次数、缓存率和模型分布，不含费用、账号额度、活跃时段或会话明细。

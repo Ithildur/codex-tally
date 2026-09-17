@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+const password = process.env.DASHBOARD_PASSWORD;
+if (!password) throw new Error('Set DASHBOARD_PASSWORD to the running server password');
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin = process.env.DASHBOARD_URL || 'http://localhost:4318';
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
@@ -22,7 +23,7 @@ try {
   });
   await page.goto(`${origin}/?tab=account`);
   await page.locator('#password').waitFor({ state: 'visible' });
-  await page.locator('#password').fill((await readFile(process.env.PASSWORD_FILE || '.state/password', 'utf8')).trim());
+  await page.locator('#password').fill(password);
   await page.locator('#password').press('Enter');
   const settled = async () => {
     await page.locator('#dashboard').waitFor({ state: 'visible' });

@@ -1,5 +1,8 @@
 .state/
+.state-codex-tally/
 /codex-dashboard
 /codex-dashboard.exe
+/codex-tally
+/codex-tally.exe
 /_site/
 /release/

@@ -44,7 +44,7 @@ jobs:
           go-version-file: go.mod
       - name: Build public files only
         if: steps.snapshot.outputs.ready == 'true'
-        run: go run ./cmd/codex-dashboard build-pages -input site/usage.json -out _site
+        run: go run ./cmd/codex-tally build-pages -input site/usage.json -out _site
       - uses: actions/configure-pages@v5
         if: steps.snapshot.outputs.ready == 'true'
       - uses: actions/upload-pages-artifact@v4

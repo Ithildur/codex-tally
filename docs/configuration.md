@@ -8,8 +8,8 @@
 | `PORT` | `4318` |
 | `PUBLIC_ORIGIN` | 远程管理端的 HTTPS 地址，如 `https://usage.example.com` |
 | `PUBLIC_SHARE` | 设为 `1` 开启匿名分享 |
-| `DASHBOARD_PASSWORD` | 至少 16 字符；未设置时使用或生成 `.state/password` |
-| `DASHBOARD_STATE_DIR` | 可执行文件旁的 `.state` |
+| `DASHBOARD_PASSWORD` | 固定密码，至少 16 字符；未设置或为空时，每次启动随机生成并输出到控制台 |
+| `DASHBOARD_STATE_DIR` | 可执行文件旁的 `.state-codex-tally` |
 | `CODEX_HOME` | 当前用户的 `.codex` |
 | `TZ` | 系统时区；可指定 `Asia/Hong_Kong` 等 IANA 名称 |
 | `PRICING_FILE` | 自定义价格 JSON，见[费用说明](metrics.md#费用) |
@@ -20,7 +20,7 @@
 启动示例：
 
 ```bash
-CODEX_HOME=/path/to/.codex TZ=Asia/Hong_Kong ./codex-dashboard
+CODEX_HOME=/path/to/.codex TZ=Asia/Hong_Kong ./codex-tally
 ```
 
 Windows PowerShell：
@@ -28,7 +28,7 @@ Windows PowerShell：
 ```powershell
 $env:CODEX_HOME = "$env:USERPROFILE\.codex"
 $env:TZ = "Asia/Hong_Kong"
-.\codex-dashboard.exe
+.\codex-tally.exe
 ```
 
 ## 数据目录
@@ -46,7 +46,11 @@ Windows 原生与 WSL 的用户目录相互独立，不自动扫描或合并。�
 
 ## 登录与状态
 
-仪表盘密码与 Codex 登录凭证分开。仪表盘登录有效期为 12 小时，重启后需要重新登录。密码与本机统计缓存保存在 `.state`；迁移时保留该目录。
+仪表盘密码与 Codex 登录凭证分开。未指定密码时，成功启动后在控制台输出“本次登录密码”，仅本次运行有效；指定 `DASHBOARD_PASSWORD` 后使用该密码，不输出到日志。程序不读写密码文件。
+
+登录有效期为 12 小时，重启后需要重新登录。`.state-codex-tally` 只用于本机统计缓存等私有状态。旧版 `.state/password` 不再使用，可自行删除；如需沿用旧密码，将其设为 `DASHBOARD_PASSWORD`。
+
+从 0.0.1 升级时，默认状态目录由 `.state` 改为 `.state-codex-tally`，旧目录不会自动迁移。可将 `sessions.json` 移入新目录复用缓存，或直接启动重新扫描；也可用 `DASHBOARD_STATE_DIR` 显式指定旧目录。不要迁移旧密码文件。
 
 Linux/macOS 下状态目录权限为 `0700`，文件为 `0600`。Windows 使用 NTFS 继承权限，建议将程序与状态目录放在自己的用户目录。
 

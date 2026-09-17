@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	json "encoding/json/v2"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"maps"
@@ -63,7 +62,7 @@ func passwordHash(password string, salt []byte) []byte {
 	}
 	return key
 }
-func newApplication(ctx context.Context, c config) (*application, error) {
+func newApplication(ctx context.Context, c config, password string) (*application, error) {
 	if c.Origin != "" {
 		u, err := url.Parse(c.Origin)
 		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
@@ -77,30 +76,6 @@ func newApplication(ctx context.Context, c config) (*application, error) {
 	}
 	if err := os.MkdirAll(c.State, 0700); err != nil {
 		return nil, err
-	}
-	password := os.Getenv("DASHBOARD_PASSWORD")
-	if password == "" {
-		path := filepath.Join(c.State, "password")
-		raw, err := os.ReadFile(path)
-		if errors.Is(err, os.ErrNotExist) {
-			password = randomToken()
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-			if err != nil {
-				return nil, err
-			}
-			_, writeErr := fmt.Fprintln(f, password)
-			closeErr := f.Close()
-			if err = errors.Join(writeErr, closeErr); err != nil {
-				return nil, err
-			}
-		} else if err != nil {
-			return nil, err
-		} else {
-			password = strings.TrimSpace(string(raw))
-		}
-		if err := os.Chmod(path, 0600); err != nil {
-			return nil, err
-		}
 	}
 	if len(password) < 16 {
 		return nil, errors.New("仪表盘密码至少需要 16 个字符")
@@ -363,11 +338,16 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	c := config{Host: cmp.Or(os.Getenv("HOST"), "127.0.0.1"), Port: cmp.Or(os.Getenv("PORT"), "4318"), Origin: os.Getenv("PUBLIC_ORIGIN"), State: cmp.Or(os.Getenv("DASHBOARD_STATE_DIR"), filepath.Join(filepath.Dir(executable), ".state")), Root: root, Home: home, Pricing: os.Getenv("PRICING_FILE")}
+	c := config{Host: cmp.Or(os.Getenv("HOST"), "127.0.0.1"), Port: cmp.Or(os.Getenv("PORT"), "4318"), Origin: os.Getenv("PUBLIC_ORIGIN"), State: cmp.Or(os.Getenv("DASHBOARD_STATE_DIR"), filepath.Join(filepath.Dir(executable), ".state-codex-tally")), Root: root, Home: home, Pricing: os.Getenv("PRICING_FILE")}
 	c.Share = os.Getenv("PUBLIC_SHARE") == "1"
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	app, err := newApplication(ctx, c)
+	password := os.Getenv("DASHBOARD_PASSWORD")
+	generated := password == ""
+	if generated {
+		password = randomToken()
+	}
+	app, err := newApplication(ctx, c, password)
 	if err != nil {
 		return err
 	}
@@ -382,9 +362,10 @@ func run() error {
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
 	log.Printf("Codex 用量仪表盘：%s", cmp.Or(c.Origin, "http://localhost:"+c.Port))
-	if os.Getenv("DASHBOARD_PASSWORD") == "" {
-		log.Printf("密码文件：%s", filepath.Join(c.State, "password"))
+	if generated {
+		log.Printf("本次登录密码：%s", password)
 	}
+	password = ""
 	select {
 	case <-ctx.Done():
 	case err = <-done:

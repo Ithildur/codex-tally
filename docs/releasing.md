@@ -12,7 +12,7 @@
 
 不接受 `v0.1.0`、`0.1` 或 `0.1.0-rc.01`。主、次、补丁版本和纯数字预发布标识不允许前导零。
 
-版本通过 `-ldflags "-X main.buildVersion=..."` 注入，`codex-dashboard --version` 或 `version` 子命令输出版本。普通源码构建默认为 `0.0.0-dev`。
+版本通过 `-ldflags "-X main.buildVersion=..."` 注入，`codex-tally --version` 或 `version` 子命令输出版本。普通源码构建默认为 `0.0.0-dev`。
 
 ## 发布步骤
 
@@ -46,7 +46,9 @@ codex-tally_<版本>_windows_<架构>.zip
 SHA256SUMS
 ```
 
-macOS 的系统名为 `darwin`。压缩包内保留 `codex-dashboard` / `codex-dashboard.exe` 文件名，并包含许可证和使用文档；不包含登录凭证、缓存或用量快照。当前不做代码签名或 macOS 公证。
+macOS 的系统名为 `darwin`。压缩包内的程序为 `codex-tally` / `codex-tally.exe`，并包含许可证和使用文档；不包含登录凭证、缓存或用量快照。当前不做代码签名或 macOS 公证。
+
+0.0.1 的程序名为 `codex-dashboard`，升级后需更新服务和定时任务中的执行路径。源码构建入口相应改为 `cmd/codex-tally`；根目录的 `go build .` 仍可用。
 
 ## 本地打包
 

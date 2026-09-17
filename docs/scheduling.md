@@ -8,10 +8,10 @@
 
 ```cron
 PATH=/usr/local/bin:/usr/bin:/bin
-*/30 * * * * "/home/you/codex-tally/codex-dashboard" sync -repo "/home/you/codex-tally" -codex-home "/home/you/.codex" -log "/home/you/codex-tally/.state/sync.log"
+*/30 * * * * "/home/you/codex-tally/codex-tally" sync -repo "/home/you/codex-tally" -codex-home "/home/you/.codex" -log "/home/you/codex-tally/.state-codex-tally/sync.log"
 ```
 
-如果 Git 或 credential helper 位于其他目录，把对应目录加入 `PATH`。使用自己的 crontab，不使用 `sudo crontab`。停用时删除该行；通过 `.state/sync.log` 检查执行结果。
+如果 Git 或 credential helper 位于其他目录，把对应目录加入 `PATH`。使用自己的 crontab，不使用 `sudo crontab`。停用时删除该行；通过 `.state-codex-tally/sync.log` 检查执行结果。
 
 ## macOS：用户 LaunchAgent
 
@@ -23,11 +23,11 @@ PATH=/usr/local/bin:/usr/bin:/bin
 <plist version="1.0"><dict>
   <key>Label</key><string>com.ithildur.codex-tally.sync</string>
   <key>ProgramArguments</key><array>
-    <string>/Users/you/codex-tally/codex-dashboard</string>
+    <string>/Users/you/codex-tally/codex-tally</string>
     <string>sync</string>
     <string>-repo</string><string>/Users/you/codex-tally</string>
     <string>-codex-home</string><string>/Users/you/.codex</string>
-    <string>-log</string><string>/Users/you/codex-tally/.state/sync.log</string>
+    <string>-log</string><string>/Users/you/codex-tally/.state-codex-tally/sync.log</string>
   </array>
   <key>EnvironmentVariables</key><dict>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
@@ -53,8 +53,8 @@ launchctl bootout gui/$(id -u)/com.ithildur.codex-tally.sync
 ```powershell
 $repo = "$env:USERPROFILE\codex-tally"
 $codexDataPath = "$env:USERPROFILE\.codex"
-$arguments = 'sync -repo "{0}" -codex-home "{1}" -log "{0}\.state\sync.log"' -f $repo, $codexDataPath
-$action = New-ScheduledTaskAction -Execute "$repo\codex-dashboard.exe" -Argument $arguments -WorkingDirectory $repo
+$arguments = 'sync -repo "{0}" -codex-home "{1}" -log "{0}\.state-codex-tally\sync.log"' -f $repo, $codexDataPath
+$action = New-ScheduledTaskAction -Execute "$repo\codex-tally.exe" -Argument $arguments -WorkingDirectory $repo
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 30)
 $principal = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 12)
@@ -62,7 +62,7 @@ Register-ScheduledTask -TaskName 'Codex Tally Sync' -Action $action -Trigger $tr
 
 # 查看最近执行结果与日志
 Get-ScheduledTaskInfo -TaskName 'Codex Tally Sync'
-Get-Content "$repo\.state\sync.log" -Tail 30
+Get-Content "$repo\.state-codex-tally\sync.log" -Tail 30
 # 停用
 Unregister-ScheduledTask -TaskName 'Codex Tally Sync' -Confirm:$false
 ```

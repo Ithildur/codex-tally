@@ -225,7 +225,7 @@ func TestSyncCommandAndLog(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "sessions"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	logPath := filepath.Join(work, ".state", "sync.log")
+	logPath := filepath.Join(work, ".state-codex-tally", "sync.log")
 	args := []string{"sync", "-repo", work, "-codex-home", root, "-state", t.TempDir(), "-log", logPath}
 	for range 2 {
 		if err := Run(args, "0.0.0-dev"); err != nil {

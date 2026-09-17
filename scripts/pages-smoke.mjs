@@ -11,7 +11,7 @@ const temporary = await mkdtemp(path.join(tmpdir(), 'codex-pages-'));
 const site = path.join(temporary, 'site');
 const screenshots = process.env.SCREENSHOT_DIR || '/tmp/codex-pages-review';
 await mkdir(screenshots, {recursive: true});
-execFileSync('go', ['run', './cmd/codex-dashboard', 'build-pages', '-input', 'internal/dashboard/testdata/public-usage.json', '-out', site], {cwd: root});
+execFileSync('go', ['run', './cmd/codex-tally', 'build-pages', '-input', 'internal/dashboard/testdata/public-usage.json', '-out', site], {cwd: root});
 const types = {'.html':'text/html', '.svg':'image/svg+xml', '.js':'text/javascript', '.css':'text/css', '.json':'application/json'};
 const server = createServer(async (request, response) => {
   try {

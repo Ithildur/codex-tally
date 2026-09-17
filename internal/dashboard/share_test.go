@@ -108,7 +108,7 @@ func TestPublicComponentsBoundary(t *testing.T) {
 	if _, pending, _ := app.local.view(); pending {
 		t.Fatal("public request started scanning")
 	}
-	for _, path := range []string{"/api/local?refresh=1", "/api/account?refresh=1", "/.state/sessions.json", "/share.html", "/share.svg"} {
+	for _, path := range []string{"/api/local?refresh=1", "/api/account?refresh=1", "/.state-codex-tally/sessions.json", "/share.html", "/share.svg"} {
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, httptest.NewRequest("GET", "http://localhost:4318"+path, nil))
 		if w.Code != 401 {

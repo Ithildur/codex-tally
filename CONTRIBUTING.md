@@ -16,7 +16,7 @@ Bug 报告请附上程序版本、操作系统、复现步骤及去除敏感信�
 ## 目录
 
 ```text
-cmd/codex-dashboard/       CLI 入口
+cmd/codex-tally/       CLI 入口
 internal/dashboard/       服务、采集、缓存、分享与同步
   cli.go                  命令解析
   server.go               服务装配、鉴权和 HTTP 路由
@@ -35,12 +35,12 @@ main.go                   根目录构建的兼容入口
 ## 构建与检查
 
 ```bash
-go build -trimpath -o codex-dashboard ./cmd/codex-dashboard
+go build -trimpath -o codex-tally ./cmd/codex-tally
 go test -race ./...
 go vet ./...
 ```
 
-根目录的 `go build .`、`go run .` 仍可用；CI 和打包使用 `cmd/codex-dashboard`。两个入口共享实现及版本注入规则。
+根目录的 `go build .`、`go run .` 仍可用；CI 和打包使用 `cmd/codex-tally`。两个入口共享实现及版本注入规则。
 
 浏览器检查在仓库根目录运行：
 
@@ -50,7 +50,7 @@ go vet ./...
 | `node scripts/cache-smoke.mjs` | 账号刷新、失败重试、页面隐藏和退出登录 |
 | `node scripts/pages-smoke.mjs` | 静态 Pages、仓库子路径、SVG 和 iframe |
 
-前两个脚本连接运行中的服务，默认地址为 `http://localhost:4318`；分享布局检查要求服务设置 `PUBLIC_SHARE=1`。可通过 `DASHBOARD_URL`、`PASSWORD_FILE` 指定服务和密码文件，默认密码文件为 `.state/password`。
+前两个脚本连接运行中的服务，默认地址为 `http://localhost:4318`，可用 `DASHBOARD_URL` 指定其他地址；分享布局检查要求服务设置 `PUBLIC_SHARE=1`。脚本通过 `DASHBOARD_PASSWORD` 获取登录密码：可让服务和脚本使用相同的固定密码，或将服务控制台生成的本次密码传给脚本。
 
 通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 使用现有浏览器安装，`SCREENSHOT_DIR` 指定截图目录。Pages 脚本使用合成数据，自行启动临时静态服务器。脚本不在仓库保存截图或真实用量。
 
