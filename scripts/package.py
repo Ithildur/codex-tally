@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the six standalone release archives using only Python's standard library."""
+"""Build standalone release archives using only Python's standard library."""
 
 import argparse
 import hashlib
@@ -54,8 +54,12 @@ def main():
         parser.error("output directory must be empty")
 
     checksums = []
-    for system in ("linux", "darwin", "windows"):
-        for arch in ("amd64", "arm64"):
+    for system, arches in (
+        ("linux", ("amd64", "arm64")),
+        ("darwin", ("arm64",)),
+        ("windows", ("amd64", "arm64")),
+    ):
+        for arch in arches:
             name = f"codex-tally_{version}_{system}_{arch}"
             print(f"Building {name}", flush=True)
             with tempfile.TemporaryDirectory(prefix="codex-tally-") as temporary:
@@ -76,12 +80,12 @@ def main():
                     archive = output / f"{name}.zip"
                     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
                         for file, member in files:
-                            bundle.write(file, member)
+                            bundle.write(file, f"codex-tally/{member}")
                 else:
                     archive = output / f"{name}.tar.gz"
                     with tarfile.open(archive, "w:gz") as bundle:
                         for file, member in files:
-                            bundle.add(file, arcname=member)
+                            bundle.add(file, arcname=f"codex-tally/{member}")
                 with archive.open("rb") as file:
                     digest = hashlib.file_digest(file, "sha256").hexdigest()
                 checksums.append(f"{digest}  {archive.name}\n")

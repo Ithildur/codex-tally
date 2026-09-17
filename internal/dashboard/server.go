@@ -342,7 +342,7 @@ func run() error {
 	c.Share = os.Getenv("PUBLIC_SHARE") == "1"
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	password := os.Getenv("DASHBOARD_PASSWORD")
+	password := os.Getenv("CODEX_TALLY_PASSWORD")
 	generated := password == ""
 	if generated {
 		password = randomToken()

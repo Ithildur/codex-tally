@@ -29,7 +29,7 @@ git push origin 0.1.0
 `.github/workflows/release.yml` 依次完成：
 
 1. Windows、Linux、macOS 的测试与静态检查。
-2. 六个平台的交叉编译和打包。
+2. 五个系统与架构组合的交叉编译和打包。
 3. 上传 SHA256 校验文件，创建 GitHub Release 并生成发布说明。
 
 只有 tag 的 `push` 事件发布 Release。Actions 手动运行只上传构建产物，所选提交也必须有唯一 tag。工作流使用当前仓库的 `GITHUB_TOKEN`，fork 启用 Actions 后可直接使用。
@@ -38,7 +38,7 @@ git push origin 0.1.0
 
 ## 产物
 
-Windows、Linux、macOS 均提供 amd64 / arm64：
+Windows、Linux 提供 amd64 / arm64；macOS 仅提供 Apple Silicon（arm64）版本：
 
 ```text
 codex-tally_<版本>_<系统>_<架构>.tar.gz
@@ -47,6 +47,20 @@ SHA256SUMS
 ```
 
 macOS 的系统名为 `darwin`。压缩包内的程序为 `codex-tally` / `codex-tally.exe`，并包含许可证和使用文档；不包含登录凭证、缓存或用量快照。当前不做代码签名或 macOS 公证。
+
+所有压缩包（包括 Windows ZIP）都包含一层 `codex-tally/` 目录：
+
+```text
+codex-tally/
+  codex-tally          # Windows 为 codex-tally.exe
+  LICENSE
+  README.md
+  CONTRIBUTING.md
+  SECURITY.md
+  docs/
+```
+
+解压后进入该目录启动程序，默认缓存保存在该目录下的 `.state-codex-tally/`。
 
 0.0.1 的程序名为 `codex-dashboard`，升级后需更新服务和定时任务中的执行路径。源码构建入口相应改为 `cmd/codex-tally`；根目录的 `go build .` 仍可用。
 
@@ -60,4 +74,4 @@ python3 scripts/package.py --use-git-tag --release
 python3 scripts/package.py --version 0.0.0-dev --out /tmp/codex-tally-build
 ```
 
-Windows 用 `py -3` 替换 `python3`，并使用本机输出路径。脚本构建全部六个平台，默认输出到已忽略的 `release/`；输出目录必须为空。普通用户运行程序无需 Python。
+Windows 用 `py -3` 替换 `python3`，并使用本机输出路径。脚本构建上述五个目标，默认输出到已忽略的 `release/`；输出目录必须为空。普通用户运行程序无需 Python。

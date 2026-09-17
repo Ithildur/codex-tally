@@ -50,7 +50,7 @@ go vet ./...
 | `node scripts/cache-smoke.mjs` | 账号刷新、失败重试、页面隐藏和退出登录 |
 | `node scripts/pages-smoke.mjs` | 静态 Pages、仓库子路径、SVG 和 iframe |
 
-前两个脚本连接运行中的服务，默认地址为 `http://localhost:4318`，可用 `DASHBOARD_URL` 指定其他地址；分享布局检查要求服务设置 `PUBLIC_SHARE=1`。脚本通过 `DASHBOARD_PASSWORD` 获取登录密码：可让服务和脚本使用相同的固定密码，或将服务控制台生成的本次密码传给脚本。
+前两个脚本连接运行中的服务，默认地址为 `http://localhost:4318`，可用 `DASHBOARD_URL` 指定其他地址；分享布局检查要求服务设置 `PUBLIC_SHARE=1`。脚本通过 `CODEX_TALLY_PASSWORD` 获取登录密码：可让服务和脚本使用相同的固定密码，或将服务控制台生成的本次密码传给脚本。
 
 通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 使用现有浏览器安装，`SCREENSHOT_DIR` 指定截图目录。Pages 脚本使用合成数据，自行启动临时静态服务器。脚本不在仓库保存截图或真实用量。
 

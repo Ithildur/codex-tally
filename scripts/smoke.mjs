@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createServer } from 'node:http';
-const password = process.env.DASHBOARD_PASSWORD;
-if (!password) throw new Error('Set DASHBOARD_PASSWORD to the running server password');
+const password = process.env.CODEX_TALLY_PASSWORD;
+if (!password) throw new Error('Set CODEX_TALLY_PASSWORD to the running server password');
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin = process.env.DASHBOARD_URL || 'http://localhost:4318';
 const artifacts = process.env.SCREENSHOT_DIR || '/tmp/codex-ui-review';

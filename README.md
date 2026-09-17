@@ -9,15 +9,15 @@
 
 ## 安装
 
-从本仓库的 [Releases](https://github.com/Ithildur/codex-tally/releases) 下载并解压对应文件：
+从本仓库的 [Releases](https://github.com/Ithildur/codex-tally/releases) 下载并解压对应文件，进入解压得到的 `codex-tally/` 目录运行：
 
 | 系统 | 文件标识 |
 | --- | --- |
 | Windows | `windows_amd64.zip` / `windows_arm64.zip` |
 | Linux | `linux_amd64.tar.gz` / `linux_arm64.tar.gz` |
-| macOS | `darwin_amd64.tar.gz` / `darwin_arm64.tar.gz` |
+| macOS（Apple Silicon） | `darwin_arm64.tar.gz` |
 
-Apple Silicon 选择 `arm64`，Intel / AMD 64 位处理器选择 `amd64`。Release 附带 `SHA256SUMS`；程序暂未做 Windows/macOS 代码签名。
+macOS 仅提供 Apple Silicon 版本，要求 macOS 13 或更新版本。Windows / Linux 按处理器架构选择 `amd64` 或 `arm64`。Release 附带 `SHA256SUMS`；程序暂未做 Windows/macOS 代码签名。
 
 ### 从源码构建
 
@@ -41,13 +41,13 @@ Windows 将输出文件名改为 `codex-tally.exe`。使用 Pages 同步时，�
 
 Windows PowerShell 使用 `.\codex-tally.exe`。打开 <http://localhost:4318>，使用启动日志中的“本次登录密码”登录。每次启动都会生成新密码，不写入文件。
 
-需要固定密码时，设置 `DASHBOARD_PASSWORD`（至少 16 字符）：
+需要固定密码时，设置 `CODEX_TALLY_PASSWORD`（至少 16 字符）：
 
 ```bash
-DASHBOARD_PASSWORD='your-fixed-password-at-least-16-chars' ./codex-tally
+CODEX_TALLY_PASSWORD='your-fixed-password-at-least-16-chars' ./codex-tally
 ```
 
-PowerShell 先设置 `$env:DASHBOARD_PASSWORD = '你的固定密码'` 再启动。指定的密码不会输出到日志。
+PowerShell 先设置 `$env:CODEX_TALLY_PASSWORD = '你的固定密码'` 再启动。指定的密码不会输出到日志。
 
 程序默认读取当前用户的 `.codex`，可通过 `CODEX_HOME` 指定其他目录。账号统计需要文件形式的 `auth.json`；本机统计不需要登录凭证。
 

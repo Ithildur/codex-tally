@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-const password = process.env.DASHBOARD_PASSWORD;
-if (!password) throw new Error('Set DASHBOARD_PASSWORD to the running server password');
+const password = process.env.CODEX_TALLY_PASSWORD;
+if (!password) throw new Error('Set CODEX_TALLY_PASSWORD to the running server password');
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin = process.env.DASHBOARD_URL || 'http://localhost:4318';
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
