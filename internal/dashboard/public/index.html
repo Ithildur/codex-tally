@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0c0d10">
+  <title>Codex Tally · 用量与习惯</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script src="/app.js"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="login" class="login-shell" hidden>
+    <form id="login-form" class="login-form">
+      <img class="brand-mark" src="/favicon.svg" alt="" width="32" height="32">
+      <h1>Codex 用量</h1>
+      <label for="password">仪表盘密码</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+      <button type="submit" class="primary">登录仪表盘 <span aria-hidden="true">→</span></button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </div>
+  <div id="dashboard" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <a href="/" aria-label="Codex 用量仪表盘首页"><strong aria-hidden="true"><span>C</span><span>o</span><span>d</span><span>e</span><span>x</span></strong></a>
+        <h1 aria-label="用量与习惯"><span>用</span><span>量</span><span>与</span><span>习</span><span>惯</span></h1>
+      </div>
+      <div class="tabs" role="tablist" aria-label="统计来源" aria-orientation="horizontal">
+        <button id="tab-local" role="tab" aria-controls="panel-local" aria-selected="true" tabindex="0">本机统计</button>
+        <button id="tab-account" role="tab" aria-controls="panel-account" aria-selected="false" tabindex="-1">总统计</button>
+      </div>
+      <div class="quota-control">
+        <button id="quota-toggle" type="button" aria-expanded="false" aria-controls="quota-popover" aria-label="Codex 剩余额度，展开详情">
+          <span id="plan" class="tag" hidden></span>
+          <span id="quota-five-summary" class="quota-summary" hidden><span>5 hours</span><span>剩余</span><b id="quota-five">—</b></span>
+          <span class="quota-summary"><span>7 days</span><span>剩余</span><b id="quota-week">—</b></span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+        </button>
+        <section id="quota-popover" class="quota-popover" aria-labelledby="quota-title" hidden>
+          <div class="quota-heading"><h2 id="quota-title">剩余额度</h2><button id="quota-refresh" class="quiet" type="button">刷新</button></div>
+          <p id="quota-updated" class="metadata"></p>
+          <div id="limits" class="limits"><p class="loading">正在读取额度…</p></div>
+          <p id="limit-error" class="error" role="status"></p>
+        </section>
+      </div>
+      <div class="top-actions">
+        <div class="theme-control">
+          <button id="theme-toggle" class="quiet" type="button" aria-expanded="false" aria-controls="theme-options" aria-label="主题：跟随系统">系统</button>
+          <div id="theme-options" class="theme-options" role="group" aria-label="选择主题" hidden>
+            <button type="button" data-theme-choice="system" aria-pressed="true">跟随系统</button>
+            <button type="button" data-theme-choice="light" aria-pressed="false">浅色</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">深色</button>
+          </div>
+        </div>
+        <button id="share-link" class="quiet" type="button" aria-haspopup="dialog" aria-controls="share-hub" hidden>分享</button>
+        <button id="logout" class="quiet">退出</button>
+      </div>
+    </header>
+    <main>
+
+      <div id="panel-local" role="tabpanel" aria-labelledby="tab-local">
+      <form id="period-form" class="toolbar">
+        <div class="period-control"><label for="period" class="sr-only">统计范围</label><select id="period" name="period">
+          <option value="week">最近 7 天</option><option value="24">最近 24 小时</option><option value="today">今天</option><option value="yesterday">昨天</option>
+          <option value="this_week">本周</option><option value="last_week">上周</option><option value="month">本月</option><option value="last_month">上月</option>
+          <option value="quota5" hidden disabled>5 小时窗口</option><option value="quota7" hidden disabled>7 天额度窗口</option><option value="custom7d">自定义 7 天</option>
+        </select></div>
+        <div id="custom-control" class="custom-control" hidden><label for="window-end">结束于</label><input id="window-end" type="datetime-local"><button type="submit" class="secondary">应用</button></div>
+        <span id="range" class="metadata range"></span>
+        <button id="refresh" type="button" class="quiet refresh"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6 6 0 1 0-.5 5M16 3v5h-5"/></svg>刷新</button>
+      </form>
+      <section aria-labelledby="local-title" id="local-section" aria-busy="true">
+        <h2 id="local-title" class="sr-only">本机用量</h2>
+        <p id="local-error" class="error" role="status"></p>
+        <div class="metrics">
+          <article class="metric"><span class="metric-label">总 Token</span><strong id="total-tokens">—</strong></article>
+          <article class="metric"><span class="metric-label">费用估算</span><strong id="total-cost">—</strong><span id="cost-detail" class="metadata" hidden></span></article>
+        </div>
+        <dl class="local-stats">
+          <div><dt>会话</dt><dd id="session-detail">—</dd></div>
+          <div><dt>调用</dt><dd id="total-calls">—</dd></div>
+          <div><dt>输出</dt><dd id="output-tokens">—</dd></div>
+          <div><dt>输入</dt><dd id="input-tokens">—</dd></div>
+          <div><dt>缓存</dt><dd id="cache-detail">—</dd></div>
+          <div><dt>缓存率</dt><dd id="cache-rate">—</dd></div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="habits-title" class="habits-section">
+        <h2 id="habits-title" class="sr-only">使用习惯</h2>
+        <div class="habits-grid">
+          <article class="panel"><div class="panel-heading"><h3>活跃时段</h3><span id="habit-summary" class="metadata"></span></div><div id="heatmap" class="heatmap" aria-label="每周各时段调用次数"></div><div class="heatmap-footer"><span id="timezone" class="metadata"></span><span class="heat-legend">少 <i></i><i></i><i></i><i></i><i></i> 多</span></div><p id="busiest" class="note"></p></article>
+          <article class="panel"><div class="panel-heading"><h3>常用模型</h3><span class="metadata">Token</span></div><div id="models" class="distribution"><p class="empty">正在统计…</p></div></article>
+        </div>
+      </section>
+      </div>
+
+      <div id="panel-account" role="tabpanel" aria-labelledby="tab-account" hidden>
+      <form id="account-period-form" class="toolbar">
+        <div class="period-control"><label for="account-period" class="sr-only">统计范围</label><select id="account-period" name="period">
+          <option value="week">最近 7 天</option><option value="today">今天</option><option value="yesterday">昨天</option>
+          <option value="this_week">本周</option><option value="last_week">上周</option><option value="month">本月</option><option value="last_month">上月</option>
+          <option value="custom7d">自定义 7 天</option>
+        </select></div>
+        <div id="account-custom-control" class="custom-control" hidden><label for="account-window-end">结束于</label><input id="account-window-end" type="datetime-local"><button type="submit" class="secondary">应用</button></div>
+        <span id="account-range" class="metadata range"></span>
+        <button id="account-refresh" type="button" class="quiet refresh"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6 6 0 1 0-.5 5M16 3v5h-5"/></svg>刷新</button>
+      </form>
+      <section aria-labelledby="cloud-title" id="cloud-section" aria-busy="true">
+        <div class="section-heading cloud-heading"><h2 id="cloud-title">账号用量</h2><span id="cloud-updated" class="metadata"></span></div>
+        <p id="cloud-error" class="error" role="status"></p>
+        <div class="cloud-grid">
+          <article class="panel trend-panel">
+            <div class="panel-heading"><h3>每日 Token</h3><span id="cloud-range" class="metadata"></span></div>
+            <div class="chart-summary"><strong id="cloud-total">—</strong></div>
+            <div class="legend"><span><i class="legend-input"></i>未缓存输入</span><span><i class="legend-cache"></i>缓存输入</span><span><i class="legend-output"></i>输出</span><span><i class="legend-missing"></i>未返回</span></div>
+            <div id="daily-chart" class="daily-chart" role="img" aria-label="每日 Token 用量图"></div>
+            <details class="data-details"><summary>查看每日明细</summary><div class="table-scroll"><table><caption class="sr-only">账号每日 Token 明细</caption><thead><tr><th scope="col">日期</th><th scope="col">未缓存输入</th><th scope="col">缓存输入</th><th scope="col">输出</th><th scope="col">总 Token</th></tr></thead><tbody id="daily-table"></tbody></table></div></details>
+          </article>
+          <article class="panel"><div class="panel-heading"><h3>客户端分布</h3><span class="metadata">轮次</span></div><div id="clients" class="distribution"><p class="empty">正在读取…</p></div></article>
+        </div>
+      </section>
+
+      <section class="panel breakdown-panel" aria-labelledby="breakdown-title">
+        <div class="panel-heading"><h2 id="breakdown-title">当日模型用量占比</h2><div class="breakdown-controls"><label class="sr-only" for="breakdown-date">选择模型用量日期</label><select id="breakdown-date"></select></div></div>
+        <p id="breakdown-error" class="error" role="status"></p>
+        <div class="table-scroll"><table><caption class="sr-only">选定日期各模型及速度的用量占比</caption><thead><tr><th scope="col">模型</th><th scope="col">速度</th><th scope="col">占比</th></tr></thead><tbody id="breakdown-table"></tbody></table></div>
+      </section>
+      </div>
+    </main>
+  </div>
+  <dialog id="share-hub" class="share-hub" aria-labelledby="share-title">
+    <header class="share-heading"><div><h2 id="share-title">分享</h2><span class="metadata">月度公开快照</span></div><button id="share-close" class="quiet" type="button" aria-label="关闭分享面板">关闭</button></header>
+    <div class="share-layout">
+      <form id="share-options" class="share-options">
+        <label for="share-component">组件</label>
+        <select id="share-component"><option value="hub">自定义 Hub</option><option value="overview">完整概览</option><option value="tokens">总 Token</option><option value="calls">调用次数</option><option value="cache">缓存命中率</option><option value="models">模型分布</option></select>
+        <fieldset id="share-hub-components" class="share-components"><legend>展示内容</legend>
+          <label><input type="checkbox" name="component" value="tokens" checked>总 Token</label>
+          <label><input type="checkbox" name="component" value="calls" checked>调用次数</label>
+          <label><input type="checkbox" name="component" value="cache" checked>缓存命中率</label>
+          <label><input type="checkbox" name="component" value="models" checked>模型分布</label>
+        </fieldset>
+        <label for="share-theme">主题</label>
+        <select id="share-theme"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select>
+        <label for="share-format">复制格式</label>
+        <select id="share-format"><option value="web">网页链接</option><option value="svg">SVG 链接</option><option value="markdown">Markdown 图片</option><option value="iframe">iframe 网页</option></select>
+      </form>
+      <div class="share-preview-panel">
+        <div class="share-preview-heading"><span id="share-preview-label">网页预览</span><a id="share-open" class="quiet" href="/share" target="_blank" rel="noopener">打开预览 ↗</a></div>
+        <div id="share-preview" class="share-preview" aria-busy="false"></div>
+        <p id="share-preview-error" class="error" role="status"></p>
+      </div>
+    </div>
+    <footer class="share-output">
+      <label class="sr-only" for="share-code">分享链接或嵌入代码</label>
+      <textarea id="share-code" rows="3" readonly spellcheck="false"></textarea>
+      <div class="share-copy-row"><span id="share-copy-status" class="metadata" role="status"></span><button id="share-copy" class="primary" type="button">复制链接</button></div>
+    </footer>
+  </dialog>
+  <div id="boot" class="boot" role="status">正在打开仪表盘…</div>
+</body>
+</html>

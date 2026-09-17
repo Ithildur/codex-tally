@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>Codex Tally · 分享</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="pages.css">
+  <script defer src="embed.js"></script>
+  <script defer src="pages.js"></script>
+</head>
+<body>
+  <header><div class="brand">Codex<span>公开用量</span></div><span id="month"></span></header>
+  <main>
+    <section class="controls" aria-label="分享设置">
+      <fieldset id="components"><legend>组件</legend></fieldset>
+      <label>主题<select id="theme"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
+      <label>格式<select id="format"><option value="html">网页</option><option value="svg">SVG</option><option value="markdown">Markdown</option><option value="iframe">iframe</option></select></label>
+    </section>
+    <section class="preview" aria-label="分享预览"><iframe id="preview" data-codex-usage sandbox="allow-scripts" title="公开用量预览"></iframe><img id="image" alt="公开用量 SVG 预览" hidden></section>
+    <section class="output"><label for="code">分享链接 / 代码</label><textarea id="code" rows="4" readonly></textarea><div class="actions"><a id="open" target="_blank" rel="noopener">打开</a><button id="copy" disabled>复制</button><span id="status" role="status"></span></div></section>
+  </main>
+</body>
+</html>

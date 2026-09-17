@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="{{.Theme}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Codex Tally · {{.Title}}</title>
+  <style>
+    :root { color-scheme:dark; --bg:#111214; --text:#eeeff1; --muted:#a0a4ab; --line:#35383d; --tile:#292b2f; --edge:#4c5057; font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif; }
+    :root[data-theme="light"] { color-scheme:light; --bg:#f8f9fb; --text:#20252d; --muted:#626b78; --line:#cdd2da; --tile:#e9ecf0; --edge:#b9c0c9; }
+    @media(prefers-color-scheme:light) { :root[data-theme="auto"] { color-scheme:light; --bg:#f8f9fb; --text:#20252d; --muted:#626b78; --line:#cdd2da; --tile:#e9ecf0; --edge:#b9c0c9; } }
+    * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--text); } h1,h2,p { margin:0; } header { display:flex; align-items:center; gap:24px; border-bottom:1px solid var(--line); padding:22px 36px; } header strong { font:30px Georgia,serif; padding-right:26px; border-right:1px solid var(--line); } h1 { font-size:18px; font-weight:450; } header span { margin-left:auto; color:var(--muted); font:14px monospace; }
+    main { max-width:1200px; margin:auto; padding:54px 36px 30px; } .overview { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); padding-bottom:42px; border-bottom:1px solid var(--line); } .total { container-type:inline-size; padding-right:40px; } h2 { font-size:18px; font-weight:450; } .number { display:flex; gap:.06em; font:600 min(130px,calc(100cqi / 7)) / 1.3 Arial,sans-serif; margin:24px 0; } .digit { position:relative; width:.72em; text-align:center; background:var(--tile); border:1px solid var(--edge); border-radius:5px; box-shadow:0 2px 4px #0002; } .digit::after { content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:var(--edge); } .full { font:13px monospace; color:var(--muted); }
+    .metrics { border-left:1px solid var(--line); padding-left:36px; display:flex; flex-direction:column; justify-content:center; } .metric { padding:22px 0; display:flex; align-items:center; justify-content:space-between; gap:20px; } .metric + .metric { border-top:1px solid var(--line); } .metric strong { font:36px monospace; } .metric span { color:var(--muted); font-size:14px; }
+    .models { padding:30px 0; } table { margin-top:20px; width:100%; border-collapse:collapse; font:14px/1.6 monospace; } th { color:var(--muted); font-weight:400; font-size:12px; } th,td { padding:14px 0; border-bottom:1px solid var(--line); text-align:right; } th:first-child,td:first-child { text-align:left; overflow-wrap:anywhere; } footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; color:var(--muted); font-size:12px; padding-top:12px; }
+    .component { max-width:720px; padding:24px; } .component header { padding:0 0 16px; gap:16px; font-size:13px; color:var(--muted); } .component h1 { font-size:15px; color:var(--text); } .component .value { display:block; padding:24px 0; font:clamp(30px,8vw,56px) monospace; overflow-wrap:anywhere; } .component .models { padding:0 0 12px; } .component footer { border-top:1px solid var(--line); }
+    @media(max-width:700px) { header { padding:18px; gap:16px; flex-wrap:wrap; } header strong { font-size:25px; padding-right:16px; } header span { font-size:12px; } main { padding:30px 20px; } .overview { grid-template-columns:1fr; padding-bottom:20px; } .total { padding-right:0; } .number { font-size:min(110px,calc(100cqi / 6)); } .metrics { margin-top:24px; padding-left:0; border-left:0; border-top:1px solid var(--line); } .metric strong { font-size:30px; } table { font-size:12px; } td,th { padding-right:8px; } td:last-child,th:last-child { padding-right:0; } }
+    .hub-grid { display:grid; grid-template-columns:repeat(var(--columns),minmax(0,1fr)); gap:28px; }
+    .hub-item { min-width:0; padding:22px 0; border-bottom:1px solid var(--line); }
+    .hub-item h2 { color:var(--muted); font-size:14px; }
+    .hub-value { display:block; margin-top:18px; font:clamp(28px,4vw,44px)/1.3 monospace; overflow-wrap:anywhere; }
+    .hub-models { grid-column:1/-1; }
+    @media(max-width:700px) { .hub-grid { grid-template-columns:1fr; gap:12px; } }
+  </style>
+</head>
+<body>
+  {{if eq .Component "overview"}}
+  <header><strong>Codex</strong><h1>公开用量</h1><span>{{.Month}}</span></header>
+  <main>
+    <section class="overview" aria-label="月度用量">
+      <div class="total"><h2>总 Token</h2><div class="number" role="img" aria-label="{{compact .Tokens}}">{{range digits .Tokens}}<span class="digit" aria-hidden="true">{{.}}</span>{{end}}</div><p class="full">{{.Tokens}} Token</p></div>
+      <div class="metrics"><div class="metric"><span>调用次数</span><strong>{{.Calls}}</strong></div><div class="metric"><span>缓存命中率</span><strong>{{.CacheRate}}</strong></div></div>
+    </section>
+    <section class="models"><h2>模型用量</h2>{{template "model-table" .}}</section>
+    <footer><span>更新于 {{.Updated}}</span></footer>
+  </main>
+  {{else if eq .Component "hub"}}
+  <header><strong>Codex</strong><h1>{{.Title}}</h1><span>{{.Month}}</span></header>
+  <main>
+    <div class="hub-grid" style="--columns:{{.Columns}}">
+      {{range .Parts}}<section class="hub-item {{if eq .Key "models"}}hub-models{{end}}" data-component="{{.Key}}"><h2>{{.Title}}</h2>
+        {{if eq .Key "models"}}{{template "model-table" $}}{{else}}<strong class="hub-value">{{.Value}}</strong>{{end}}
+      </section>{{end}}
+    </div>
+    <footer><span>更新于 {{.Updated}}</span></footer>
+  </main>
+  {{else}}
+  <main class="component"><header><h1>{{.Title}}</h1><span>Codex · {{.Month}}</span></header>
+    {{if eq .Component "models"}}<section class="models">{{template "model-table" .}}</section>{{else}}<strong class="value">{{.Value}}</strong>{{end}}
+    <footer><span>更新于 {{.Updated}}</span></footer>
+  </main>
+  {{end}}
+<script>{{resizeScript}}</script>
+</body>
+</html>
+{{define "model-table"}}<table><thead><tr><th scope="col">模型</th><th scope="col">Token</th><th scope="col">调用</th></tr></thead><tbody>{{range .Models}}<tr><td>{{.Model}}</td><td>{{compact .Tokens}}</td><td>{{.Calls}}</td></tr>{{else}}<tr><td colspan="3">本月暂无记录</td></tr>{{end}}</tbody></table>{{end}}

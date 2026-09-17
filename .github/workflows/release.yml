@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags: ['*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+
+  package:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build tagged archives
+        run: python3 scripts/package.py --use-git-tag --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-tally-release
+          path: release/
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: codex-tally-release
+          path: release
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          version="$(jq -r .version release/metadata.json)"
+          [[ "$version" == "$RELEASE_TAG" ]] || { echo 'Build version does not match pushed tag' >&2; exit 1; }
+          (cd release && sha256sum --check SHA256SUMS)
+          flags=()
+          if [[ "$(jq -r .prerelease release/metadata.json)" == true ]]; then
+            flags+=(--prerelease --latest=false)
+          fi
+          gh release create "$RELEASE_TAG" --verify-tag --generate-notes "${flags[@]}" \
+            release/*.tar.gz release/*.zip release/SHA256SUMS
