@@ -266,23 +266,27 @@ reducedMotion.addEventListener('change', () => {
   for (const element of document.querySelectorAll('.split-number')) {
     const value = element.dataset.value;
     delete element.dataset.value;
-    number(element.id, value);
+    number(element, value);
   }
 });
 
 function number(id, value) {
-  const element = $(id), next = String(value), previous = element.dataset.value || '';
-  if (next === previous) return;
+  const element = typeof id === 'string' ? $(id) : id, next = String(value), previous = element.dataset.value || '';
+  if (next === element.dataset.value) return;
   element.dataset.value = next;
   element.setAttribute('aria-label', next);
-  element.setAttribute('role', 'img');
+  if (element.tagName !== 'DD') element.setAttribute('role', 'img');
   element.classList.add('split-number');
   element.style.setProperty('--digits', Math.max(1, next.length));
   const old = previous.padStart(next.length, ' ');
   const animate = previous && previous !== '—' && next !== '—' && !reducedMotion.matches;
+  const glyph = element.hasAttribute('data-flap-label')
+    ? char => `<svg viewBox="0 0 112 130" aria-hidden="true" focusable="false"><text x="56" y="65" text-anchor="middle" dominant-baseline="central" font-size="96" fill="currentColor">${esc(char)}</text></svg>`
+    : esc;
   element.innerHTML = [...next].map((char, i) => {
     const before = old[i] || ' ', changed = animate && char !== before;
-    return `<span class="flap ${changed ? 'flipping' : ''}" aria-hidden="true" style="--delay:${Math.min(i * 22, 180)}ms"><span class="flap-top"><span>${esc(char)}</span></span><span class="flap-bottom"><span>${esc(changed ? before : char)}</span></span>${changed ? `<span class="flap-old"><span>${esc(before)}</span></span><span class="flap-new"><span>${esc(char)}</span></span>` : ''}</span>`;
+    const width = /[\u2e80-\uffef]/u.test(char) ? 'flap-wide' : char === ' ' ? 'flap-space' : '';
+    return `<span class="flap ${width} ${changed ? 'flipping' : ''}" aria-hidden="true" style="--delay:${Math.min(i * 22, 180)}ms"><span class="flap-top"><span>${glyph(char)}</span></span><span class="flap-bottom"><span>${glyph(changed ? before : char)}</span></span>${changed ? `<span class="flap-old"><span>${glyph(before)}</span></span><span class="flap-new"><span>${glyph(char)}</span></span>` : ''}</span>`;
   }).join('');
   for (const flap of element.querySelectorAll('.flipping')) {
     flap.addEventListener('animationend', event => {
@@ -292,6 +296,8 @@ function number(id, value) {
     });
   }
 }
+
+for (const element of document.querySelectorAll('[data-flap-label]')) number(element, element.textContent);
 
 function timestamp(value) {
   return value ? new Date(value).toLocaleString('zh-CN', { timeZone: timezone === 'Local' ? undefined : timezone, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '尚无数据';
@@ -392,9 +398,8 @@ $('heatmap').addEventListener('keydown', event => {
 function resetPanel(source) {
   tabControl('range', source).textContent = '';
   if (source === 'local') {
-    for (const id of ['total-tokens', 'total-cost']) { delete $(id).dataset.value; number(id, '—'); }
-    for (const id of ['total-calls', 'cache-rate', 'session-detail', 'cache-detail', 'output-tokens', 'input-tokens']) text(id, '—');
-    for (const id of ['cost-detail', 'habit-summary', 'busiest', 'local-error']) text(id, '');
+    for (const id of ['total-tokens', 'total-cost', 'total-calls', 'cache-rate', 'session-detail', 'cache-detail', 'output-tokens', 'input-tokens', 'cost-detail']) { delete $(id).dataset.value; number(id, id === 'cost-detail' ? '' : '—'); }
+    for (const id of ['habit-summary', 'busiest', 'local-error']) text(id, '');
     $('cost-detail').hidden = true;
     $('heatmap').replaceChildren();
     $('models').innerHTML = '<p class="empty">正在统计…</p>';
@@ -460,15 +465,15 @@ async function load(refresh, reset = false) {
 function renderLocal(data) {
   timezone = data.range.timezone;
   number('total-tokens', compact(data.tokens)); $('total-tokens').title = `${full(data.tokens)} Token`;
-  text('total-calls', full(data.calls));
-  text('cache-rate', data.cacheRate == null ? '—' : `${data.cacheRate.toFixed(1)}%`);
+  number('total-calls', full(data.calls));
+  number('cache-rate', data.cacheRate == null ? '—' : `${data.cacheRate.toFixed(1)}%`);
   number('total-cost', data.cost == null ? '—' : money(data.cost, data.currency.code));
-  text('output-tokens', compact(data.output));
-  text('input-tokens', compact(data.input + data.cached + data.write));
-  text('session-detail', full(data.sessions));
-  text('cache-detail', compact(data.cached));
+  number('output-tokens', compact(data.output));
+  number('input-tokens', compact(data.input + data.cached + data.write));
+  number('session-detail', full(data.sessions));
+  number('cache-detail', compact(data.cached));
   $('cost-detail').hidden = !data.unpricedCalls;
-  text('cost-detail', data.unpricedCalls ? `${full(data.unpricedCalls)} 次未计价` : '');
+  number('cost-detail', data.unpricedCalls ? `${full(data.unpricedCalls)} 次未计价` : '');
   text('local-error', data.error || (data.unreadable || data.malformed ? `${data.unreadable} 个文件、${data.malformed} 条记录不完整` : data.files === 0 ? '未发现本机会话记录' : ''));
   text('habit-summary', `${data.activeDays} 个活跃日`);
   text('timezone', timezone);
