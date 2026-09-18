@@ -63,6 +63,7 @@ let sequence = 0;
 let activeRequest;
 let breakdown;
 let tab = 'local';
+const tabs = ['local', 'account', 'calculator'];
 function tabControl(id, source = tab) {
   return $(source === 'local' ? id : `account-${id}`);
 }
@@ -314,11 +315,15 @@ function showLogin() {
   sequence++; activeRequest?.abort();
   quotaRequest?.abort(); quotaRequest = null; closeQuota();
   text('quota-five', '—'); text('quota-week', '—'); text('quota-updated', ''); text('limit-error', '');
+  text('quota-resets', '—'); text('reset-updated', ''); text('reset-error', ''); $('reset-credits').replaceChildren();
   $('plan').hidden = true;
   $('quota-five-summary').hidden = true;
   $('limits').innerHTML = '<p class="loading">正在读取额度…</p>';
   clearTimeout(refreshTimer); clearTimeout(quotaTimer);
   refreshAt = quotaAt = Infinity; views.clear();
+  resetPanel('local'); resetPanel('account');
+  calculatorRequest?.abort(); calculatorPricesRequest?.abort();
+  clearCalculatorUsage();
   $('dashboard').hidden = true; $('login').hidden = false; $('boot').hidden = true;
   $('password').value = ''; $('password').focus();
 }
@@ -329,19 +334,25 @@ function showDashboard() {
 }
 function selectTab(next, fetchData = true) {
   tab = next;
-  for (const source of ['local', 'account']) {
+  for (const source of tabs) {
     const selected = source === tab;
     $(`tab-${source}`).setAttribute('aria-selected', String(selected));
     $(`tab-${source}`).tabIndex = selected ? 0 : -1;
     $(`panel-${source}`).hidden = !selected;
   }
+  if (tab === 'calculator') {
+    activeRequest?.abort(); sequence++; clearTimeout(refreshTimer); refreshAt = Infinity;
+    const address = new URL(location.href); address.searchParams.set('tab', tab); history.replaceState(null, '', address);
+    loadCalculatorPrices();
+    return;
+  }
   if (fetchData) load(false, true);
 }
-for (const source of ['local', 'account']) {
+for (const source of tabs) {
   $(`tab-${source}`).addEventListener('click', () => selectTab(source));
   $(`tab-${source}`).addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    event.preventDefault(); const next = event.key === 'Home' ? 'local' : event.key === 'End' ? 'account' : source === 'local' ? 'account' : 'local';
+    event.preventDefault(); const next = event.key === 'Home' ? tabs[0] : event.key === 'End' ? tabs.at(-1) : tabs[(tabs.indexOf(source) + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
     selectTab(next); $(`tab-${next}`).focus();
   });
 }
@@ -411,7 +422,8 @@ function resetPanel(source) {
     breakdown = null;
   }
 }
-async function load(refresh, reset = false) {
+async function load(refresh, viewChanged = false) {
+  if (tab === 'calculator') return;
   if (refresh) loadLimits(true);
   clearTimeout(refreshTimer); refreshAt = Infinity;
   let nextDelay = retryDelay;
@@ -421,17 +433,17 @@ async function load(refresh, reset = false) {
   const params = new URLSearchParams({ period: tabControl('period', source).value });
   if (tabControl('period', source).value.startsWith('custom')) params.set('end', tabControl('window-end', source).value);
   const viewKey = `${source}:${params}`;
-  if (reset) {
-    resetPanel(source);
-    if (views.has(viewKey)) render(views.get(viewKey));
-  }
+  let rendered = false;
+  if (viewChanged && views.has(viewKey)) render(views.get(viewKey));
   const address = new URL(location.href);
   address.search = params.toString(); address.searchParams.set('tab', source); history.replaceState(null, '', address);
   tabControl('refresh', source).disabled = true; tabControl('refresh', source).lastChild.textContent = ' 刷新中';
   const section = $(source === 'local' ? 'local-section' : 'cloud-section'); section.setAttribute('aria-busy', 'true');
   function render(data) {
+    if (viewChanged && !rendered && source === 'account' && !data.counts?.data) resetPanel(source);
     if (source === 'local') renderLocal(data); else renderAccount(data);
     if (data.range) { timezone = data.range.timezone; tabControl('range', source).textContent = `${timestamp(data.range.from)} 至 ${timestamp(data.range.to)}`; tabControl('range', source).title = timezone; }
+    rendered = true;
   }
   function receive(data) {
     if (current !== sequence) return false;
@@ -452,6 +464,7 @@ async function load(refresh, reset = false) {
   } catch (error) {
     if (current !== sequence || error.name === 'AbortError') return;
     nextDelay = retryDelay;
+    if (viewChanged && !rendered) resetPanel(source);
     text(source === 'local' ? 'local-error' : 'cloud-error', error.message);
   } finally {
     if (current === sequence || source !== tab) {
@@ -513,6 +526,7 @@ function renderAccount(account) {
 }
 function renderLimits(result) {
   text('limit-error', result.error || '');
+  renderResetCredits(result);
   const plan = result.data?.plan || '';
   $('plan').hidden = !plan; text('plan', plan.toUpperCase());
   $('quota-five-summary').hidden = !plan || plan.toLowerCase() === 'pro';
@@ -539,6 +553,24 @@ function renderLimits(result) {
     const percent = Math.max(0, Math.min(100, 100 - window.usedPercent));
     return `<article class="limit-card"><h3>${esc(window.name)}</h3><div class="limit-top"><span>${duration}窗口</span><strong>${full(percent)}<small>%</small></strong></div><div class="progress ${percent <= 20 ? 'warning' : ''}" role="progressbar" aria-label="${esc(window.name)} ${duration}剩余额度" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${percent}%"></span></div><p class="metadata">${window.resetsAt ? `${timestamp(window.resetsAt * 1000)} 重置` : '未提供重置时间'}</p></article>`;
   }).join('') : '<p class="empty">账号未返回额度窗口</p>';
+}
+
+function renderResetCredits(result) {
+  const details = result.resetCredits, data = details?.data;
+  const count = details?.error ? result.data?.resetCount ?? data?.availableCount : data?.availableCount ?? result.data?.resetCount;
+  text('quota-resets', count == null ? '—' : full(count));
+  $('quota-resets').title = '剩余重置次数';
+  text('reset-error', details?.error || '');
+  text('reset-updated', details?.fetchedAt ? `${details.cached ? '缓存于' : '更新于'} ${timestamp(details.fetchedAt)}` : '');
+  const credits = data?.credits;
+  if (!credits?.length) {
+    $('reset-credits').innerHTML = `<li><span>${count === 0 ? '暂无剩余重置' : '过期时间暂不可用'}</span></li>`;
+    return;
+  }
+  const format = new Intl.DateTimeFormat('zh-CN', { timeZone: timezone === 'Local' ? undefined : timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  const sorted = credits.toSorted((a, b) => (a.expiresAt ? Date.parse(a.expiresAt) : Infinity) - (b.expiresAt ? Date.parse(b.expiresAt) : Infinity));
+  $('reset-credits').innerHTML = sorted.map((credit, i) => `<li><span>重置 ${i + 1}</span>${credit.expiresAt ? `<time datetime="${esc(credit.expiresAt)}" title="${esc(timezone)}">${esc(format.format(new Date(credit.expiresAt)))} 到期</time>` : '<span>未提供过期时间</span>'}</li>`).join('');
+  if (count > credits.length) $('reset-credits').insertAdjacentHTML('beforeend', `<li><span>另 ${full(count - credits.length)} 次未返回明细</span></li>`);
 }
 
 function renderCounts(result, range) {
@@ -611,15 +643,141 @@ function renderBreakdown() {
   }).join('') : '<tr><td colspan="3" class="empty">暂无模型用量记录</td></tr>';
 }
 
+const calculatorFields = ['input', 'cached', 'write', 'output'];
+const calculatorPriceKeys = ['inputCostPerToken', 'cacheReadCostPerToken', 'cacheWriteCostPerToken', 'outputCostPerToken'];
+const calculatorStorageKey = 'codex-tally-calculator-prices';
+let customPrices = [null, null, null, null];
+let calculatorPrices, calculatorPricesRequest, calculatorRequest;
+try {
+  const saved = JSON.parse(localStorage.getItem(calculatorStorageKey));
+  if (Array.isArray(saved) && saved.length === 4 && saved.every(value => value === null || (finite(value) && value >= 0))) customPrices = saved;
+} catch { /* Custom prices remain available without browser storage. */ }
+function setCalculatorPrices(prices) {
+  calculatorFields.forEach((field, i) => { $(`calc-${field}-price`).value = prices[i] ?? ''; });
+  calculate();
+}
+function tokenValue(value) {
+  const digits = value.trim().replaceAll(',', '');
+  return /^\d+$/.test(digits) ? Number(digits) : NaN;
+}
+function formatTokenInput(input) {
+  const value = tokenValue(input.value);
+  if (!Number.isSafeInteger(value) || value < 0) return;
+  const before = input.value.slice(0, input.selectionStart).replace(/\D/g, '').length;
+  input.value = full(value);
+  let position = 0, digits = 0;
+  while (position < input.value.length && digits < before) {
+    if (/\d/.test(input.value[position])) digits++;
+    position++;
+  }
+  if (document.activeElement === input) input.setSelectionRange(position, position);
+}
+function calculate() {
+  let total = 0, tokens = 0, invalid = false, missing = false;
+  for (const field of calculatorFields) {
+    const amount = $(`calc-${field}-tokens`), price = $(`calc-${field}-price`);
+    const count = tokenValue(amount.value), rate = price.valueAsNumber;
+    const validAmount = amount.validity.valid && Number.isSafeInteger(count) && count >= 0;
+    const absentPrice = price.value === '' && !price.validity.badInput;
+    const validPrice = !absentPrice && price.validity.valid && finite(rate) && rate >= 0;
+    amount.setAttribute('aria-invalid', String(!validAmount));
+    text(`calc-${field}-magnitude`, validAmount ? compact(count) : '—');
+    price.setAttribute('aria-invalid', String(!validPrice && (!absentPrice || (validAmount && count > 0))));
+    const cost = validAmount && (validPrice || (count === 0 && absentPrice)) ? count / 1e6 * (rate || 0) : NaN;
+    text(`calc-${field}-cost`, finite(cost) ? new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(cost) : '—');
+    invalid ||= !validAmount || (!validPrice && !absentPrice) || (validPrice && validAmount && !finite(cost));
+    missing ||= validAmount && count > 0 && absentPrice;
+    tokens += validAmount ? count : 0;
+    total += cost;
+  }
+  invalid ||= !Number.isSafeInteger(tokens) || (!missing && !finite(total));
+  text('calculator-tokens', invalid ? '—' : full(tokens));
+  text('calculator-magnitude', invalid ? '' : compact(tokens));
+  text('calculator-total', invalid || missing ? '—' : money(total));
+  text('calculator-error', invalid ? '请输入有效的非负数；Token 必须为安全范围内的整数。' : missing ? '请补全有用量项目的单价。' : '');
+}
+async function loadCalculatorPrices() {
+  if (calculatorPrices || calculatorPricesRequest) return;
+  const request = calculatorPricesRequest = new AbortController();
+  try {
+    const result = await api('/api/pricing', { signal: request.signal });
+    if (request.signal.aborted) return;
+    calculatorPrices = result.models;
+    for (const name of Object.keys(calculatorPrices).sort()) $('calculator-model').add(new Option(name, name));
+  } catch (error) {
+    if (error.name !== 'AbortError') text('calculator-storage', '预设价格暂不可用，可手填单价。');
+  } finally { if (calculatorPricesRequest === request) calculatorPricesRequest = null; }
+}
+$('calculator-model').addEventListener('change', () => {
+  const model = calculatorPrices?.[$('calculator-model').value];
+  setCalculatorPrices(model ? calculatorPriceKeys.map(key => finite(model[key]) ? Number((model[key] * 1e6).toPrecision(12)) : null) : customPrices);
+});
+$('calculator-form').addEventListener('submit', event => event.preventDefault());
+$('calculator-form').addEventListener('input', event => {
+  if (event.isComposing) return;
+  if (event.target.id.endsWith('-price')) {
+    $('calculator-model').value = '';
+    const prices = calculatorFields.map(field => $(`calc-${field}-price`).value === '' ? null : $(`calc-${field}-price`).valueAsNumber);
+    if (calculatorFields.every(field => $(`calc-${field}-price`).validity.valid) && prices.every(value => value === null || (finite(value) && value >= 0))) {
+      customPrices = prices;
+      try { localStorage.setItem(calculatorStorageKey, JSON.stringify(prices)); text('calculator-storage', ''); }
+      catch { text('calculator-storage', '浏览器未保存单价，本页仍可计算。'); }
+    }
+  } else {
+    formatTokenInput(event.target);
+    calculatorRequest?.abort(); text('calculator-range', '');
+  }
+  calculate();
+});
+for (const field of calculatorFields) {
+  const input = $(`calc-${field}-tokens`);
+  input.addEventListener('keydown', event => {
+    const position = input.selectionStart;
+    if (position !== input.selectionEnd || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    if (event.key === 'Backspace' && input.value[position - 1] === ',') input.setSelectionRange(position - 2, position);
+    if (event.key === 'Delete' && input.value[position] === ',') input.setSelectionRange(position, position + 2);
+  });
+  input.addEventListener('compositionend', () => input.dispatchEvent(new Event('input', { bubbles: true })));
+}
+function clearCalculatorUsage() {
+  calculatorRequest?.abort();
+  for (const field of calculatorFields) $(`calc-${field}-tokens`).value = '0';
+  text('calculator-range', ''); calculate();
+}
+$('calculator-clear').addEventListener('click', clearCalculatorUsage);
+$('calculator-import').disabled = false;
+$('calculator-import').addEventListener('click', async () => {
+  calculatorRequest?.abort();
+  const request = calculatorRequest = new AbortController();
+  const params = new URLSearchParams({ period: $('period').value });
+  if ($('period').value.startsWith('custom')) params.set('end', $('window-end').value);
+  $('calculator-import').disabled = true;
+  try {
+    const data = views.get(`local:${params}`) ?? await api(`/api/local?${params}`, { signal: request.signal });
+    if (request.signal.aborted) return;
+    if (data.error) throw new Error(data.error);
+    if (!calculatorFields.every(field => Number.isSafeInteger(data[field]) && data[field] >= 0)) throw new Error('本机用量不完整，请刷新后重试。');
+    for (const field of calculatorFields) $(`calc-${field}-tokens`).value = full(data[field]);
+    text('calculator-range', `${timestamp(data.range.from)} 至 ${timestamp(data.range.to)}`);
+    calculate();
+  } catch (error) {
+    if (error.name !== 'AbortError') text('calculator-error', error.message);
+  } finally {
+    if (calculatorRequest === request) { calculatorRequest = null; $('calculator-import').disabled = false; }
+  }
+});
+setCalculatorPrices(customPrices);
+
 (async () => {
   try {
     const status = await api('/api/session'); timezone = status.timezone;
     $('share-link').hidden = !status.publicShare;
     const query = new URLSearchParams(location.search);
-    tab = query.get('tab') === 'account' ? 'account' : 'local';
-    if ([...tabControl('period').options].some(option => option.value === query.get('period'))) tabControl('period').value = query.get('period');
-    configurePeriod();
-    if (query.get('end') && tabControl('period').value.startsWith('custom')) tabControl('window-end').value = query.get('end');
+    tab = tabs.includes(query.get('tab')) ? query.get('tab') : 'local';
+    const source = tab === 'calculator' ? 'local' : tab;
+    if ([...tabControl('period', source).options].some(option => option.value === query.get('period'))) tabControl('period', source).value = query.get('period');
+    configurePeriod(source);
+    if (query.get('end') && tabControl('period', source).value.startsWith('custom')) tabControl('window-end', source).value = query.get('end');
     if (status.authenticated) showDashboard(); else showLogin();
   } catch { text('boot', '无法连接仪表盘服务，请重新打开页面。'); }
 })();

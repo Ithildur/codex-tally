@@ -199,13 +199,21 @@ func (a *application) handler() http.Handler {
 		sendJSON(w, 200, map[string]bool{"ok": true})
 	})
 	mux.HandleFunc("GET /api/local", a.localUsage)
+	mux.HandleFunc("GET /api/pricing", func(w http.ResponseWriter, r *http.Request) {
+		prices, err := loadPrices(a.config.Home, a.config.Pricing)
+		if err != nil {
+			sendError(w, 500, "价格文件无法读取，请检查价格配置")
+			return
+		}
+		sendJSON(w, 200, prices)
+	})
 	mux.HandleFunc("GET /api/limits", func(w http.ResponseWriter, r *http.Request) {
 		tokens, err := a.account.credentials()
 		if err != nil {
 			sendJSON(w, 200, remoteResult{Error: new(err.Error())})
 			return
 		}
-		sendJSON(w, 200, a.account.read(tokens, "usage", nil, normalizeLimits, r.URL.Query().Get("refresh") == "1"))
+		sendJSON(w, 200, a.account.readLimits(tokens, r.URL.Query().Get("refresh") == "1"))
 	})
 	mux.HandleFunc("GET /api/account", func(w http.ResponseWriter, r *http.Request) {
 		if name := r.URL.Query().Get("period"); name == "24" || name == "custom5" {

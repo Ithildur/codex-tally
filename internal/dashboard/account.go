@@ -132,8 +132,9 @@ type rateBucket struct {
 	Secondary *rateWindow `json:"secondary"`
 }
 type limits struct {
-	Plan    *string      `json:"plan"`
-	Buckets []rateBucket `json:"buckets"`
+	Plan       *string      `json:"plan"`
+	Buckets    []rateBucket `json:"buckets"`
+	ResetCount *int         `json:"resetCount"`
 }
 
 func normalizeLimits(raw []byte) (any, error) {
@@ -144,6 +145,9 @@ func normalizeLimits(raw []byte) (any, error) {
 			Name  string   `json:"limit_name"`
 			Limit rawLimit `json:"rate_limit"`
 		} `json:"additional_rate_limits"`
+		Resets *struct {
+			AvailableCount *int `json:"available_count"`
+		} `json:"rate_limit_reset_credits"`
 	}
 	if err := json.Unmarshal(raw, &input); err != nil {
 		return nil, errors.New("额度接口结构发生变化")
@@ -171,10 +175,62 @@ func normalizeLimits(raw []byte) (any, error) {
 		return b
 	}
 	out := limits{Plan: input.Plan, Buckets: []rateBucket{bucket("Codex", input.Limit)}}
+	if input.Resets != nil && input.Resets.AvailableCount != nil && *input.Resets.AvailableCount >= 0 {
+		out.ResetCount = input.Resets.AvailableCount
+	}
 	for _, b := range input.Extra {
 		out.Buckets = append(out.Buckets, bucket(b.Name, &b.Limit))
 	}
 	return out, nil
+}
+
+type resetCredit struct {
+	ExpiresAt *time.Time `json:"expiresAt"`
+}
+
+type resetCredits struct {
+	AvailableCount int           `json:"availableCount"`
+	Credits        []resetCredit `json:"credits"`
+}
+
+func normalizeResetCredits(raw []byte) (any, error) {
+	var input struct {
+		AvailableCount *int `json:"available_count"`
+		Credits        []struct {
+			Status    string     `json:"status"`
+			ExpiresAt *time.Time `json:"expires_at"`
+		} `json:"credits"`
+	}
+	if err := json.Unmarshal(raw, &input); err != nil || input.AvailableCount == nil || *input.AvailableCount < 0 {
+		return nil, errors.New("重置次数接口结构发生变化")
+	}
+	out := resetCredits{AvailableCount: *input.AvailableCount}
+	if input.Credits != nil {
+		out.Credits = []resetCredit{}
+		for _, credit := range input.Credits {
+			if credit.Status == "available" {
+				out.Credits = append(out.Credits, resetCredit{ExpiresAt: credit.ExpiresAt})
+			}
+		}
+	}
+	return out, nil
+}
+
+type limitsResult struct {
+	remoteResult
+	ResetCredits remoteResult `json:"resetCredits"`
+}
+
+func (c *accountClient) readLimits(tokens credential, refresh bool) limitsResult {
+	var out limitsResult
+	var wg sync.WaitGroup
+	wg.Go(func() { out.remoteResult = c.read(tokens, "usage", nil, normalizeLimits, refresh) })
+	wg.Go(func() {
+		out.ResetCredits = c.read(tokens, "rate-limit-reset-credits", nil, normalizeResetCredits, refresh)
+	})
+	wg.Wait()
+	out.RefreshAfterMS = min(out.RefreshAfterMS, out.ResetCredits.RefreshAfterMS)
+	return out
 }
 
 var errQuotaExpired = errors.New("额度窗口已过期，请刷新额度")

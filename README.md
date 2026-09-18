@@ -4,6 +4,7 @@
 
 - Windows、Linux、macOS，单个可执行文件。
 - 本机会话统计与账号统计分开显示。
+- 独立费用计算器，可手填 Token 或导入本机用量，自定义模型单价。
 - 分享单个组件或组合面板，支持网页、SVG、Markdown 和 iframe。
 - GitHub Pages 展示离线快照，本机无需开放端口。
 
@@ -60,6 +61,12 @@ PowerShell 先设置 `$env:CODEX_TALLY_PASSWORD = 'your-fixed-password'` 再启�
 程序默认读取当前用户的 `.codex`，可通过 `CODEX_HOME` 指定其他目录。账号统计需要文件形式的 `auth.json`；本机统计不需要登录凭证。
 
 `./codex-tally --version` 查看版本。下载的程序运行时不需要 Go、Node 或 Python；`sync` 另需 Git 2.31+。
+
+## 费用计算
+
+打开「计算」Tab，选择已有模型或填写自定义单价，价格单位为美元 / 百万 Token。可手填用量，也可先在「本机统计」选择区间，再导入该区间的全部 Token 进行试算。
+
+未缓存输入、缓存读取、缓存写入和输出分别计费。自定义单价保存在当前浏览器，仅用于计算器；本机统计仍使用原有价格配置。
 
 ## 发布到 GitHub Pages
 

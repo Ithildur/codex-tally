@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0c0d10">
-  <title>Codex Tally · 用量与习惯</title>
+  <title>Codex Tally</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <script src="/app.js"></script>
   <link rel="stylesheet" href="/style.css">
@@ -14,7 +14,7 @@
   <div id="login" class="login-shell" hidden>
     <form id="login-form" class="login-form">
       <img class="brand-mark" src="/favicon.svg" alt="" width="32" height="32">
-      <h1>Codex 用量</h1>
+      <h1>Codex Tally</h1>
       <label for="password">仪表盘密码</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
       <button type="submit" class="primary">登录仪表盘 <span aria-hidden="true">→</span></button>
@@ -23,25 +23,35 @@
   </div>
   <div id="dashboard" hidden>
     <header class="topbar">
-      <div class="brand">
-        <a href="/" aria-label="Codex 用量仪表盘首页"><strong aria-hidden="true"><span>C</span><span>o</span><span>d</span><span>e</span><span>x</span></strong></a>
-        <h1 aria-label="用量与习惯"><span>用</span><span>量</span><span>与</span><span>习</span><span>惯</span></h1>
-      </div>
-      <div class="tabs" role="tablist" aria-label="统计来源" aria-orientation="horizontal">
+      <div class="topbar-inner">
+      <h1 class="brand">
+        <a href="/" aria-label="Codex Tally 首页">
+          <img class="brand-mark" src="/favicon.svg" alt="" width="32" height="32">
+          <span class="brand-name">Codex Tally</span>
+        </a>
+      </h1>
+      <div class="tabs" role="tablist" aria-label="仪表盘" aria-orientation="horizontal">
         <button id="tab-local" role="tab" aria-controls="panel-local" aria-selected="true" tabindex="0">本机统计</button>
         <button id="tab-account" role="tab" aria-controls="panel-account" aria-selected="false" tabindex="-1">总统计</button>
+        <button id="tab-calculator" role="tab" aria-controls="panel-calculator" aria-selected="false" tabindex="-1">计算</button>
       </div>
       <div class="quota-control">
         <button id="quota-toggle" type="button" aria-expanded="false" aria-controls="quota-popover" aria-label="Codex 剩余额度，展开详情">
           <span id="plan" class="tag" hidden></span>
           <span id="quota-five-summary" class="quota-summary" hidden><span>5 hours</span><span>剩余</span><b id="quota-five">—</b></span>
           <span class="quota-summary"><span>7 days</span><span>剩余</span><b id="quota-week">—</b></span>
+          <span class="quota-summary"><span>重置</span><b id="quota-resets">—</b></span>
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
         </button>
         <section id="quota-popover" class="quota-popover" aria-labelledby="quota-title" hidden>
           <div class="quota-heading"><h2 id="quota-title">剩余额度</h2><button id="quota-refresh" class="quiet" type="button">刷新</button></div>
           <p id="quota-updated" class="metadata"></p>
           <div id="limits" class="limits"><p class="loading">正在读取额度…</p></div>
+          <div class="reset-credits" aria-labelledby="reset-credits-title">
+            <div class="quota-heading"><h2 id="reset-credits-title">剩余重置</h2><span id="reset-updated" class="metadata"></span></div>
+            <ol id="reset-credits"></ol>
+            <p id="reset-error" class="error" role="status"></p>
+          </div>
           <p id="limit-error" class="error" role="status"></p>
         </section>
       </div>
@@ -56,6 +66,7 @@
         </div>
         <button id="share-link" class="quiet" type="button" aria-haspopup="dialog" aria-controls="share-hub" hidden>分享</button>
         <button id="logout" class="quiet">退出</button>
+      </div>
       </div>
     </header>
     <main>
@@ -128,6 +139,31 @@
         <p id="breakdown-error" class="error" role="status"></p>
         <div class="table-scroll"><table><caption class="sr-only">选定日期各模型及速度的用量占比</caption><thead><tr><th scope="col">模型</th><th scope="col">速度</th><th scope="col">占比</th></tr></thead><tbody id="breakdown-table"></tbody></table></div>
       </section>
+      </div>
+      <div id="panel-calculator" role="tabpanel" aria-labelledby="tab-calculator" hidden>
+        <div class="toolbar calculator-toolbar">
+          <label for="calculator-model">模型</label>
+          <select id="calculator-model"><option value="">自定义</option></select>
+          <button id="calculator-import" class="secondary" type="button" disabled>导入本机用量</button>
+          <span id="calculator-range" class="metadata"></span>
+          <button id="calculator-clear" class="quiet" type="button">清空用量</button>
+        </div>
+        <div class="calculator-layout">
+          <aside class="calculator-result" aria-labelledby="calculator-total-label">
+            <h2 id="calculator-total-label">费用估算</h2>
+            <output id="calculator-total" aria-live="polite">$0.00</output>
+            <dl><dt>总 Token</dt><dd id="calculator-tokens">0</dd></dl><small id="calculator-magnitude" class="token-magnitude"></small>
+          </aside>
+          <form id="calculator-form" class="calculator-form" novalidate>
+            <div class="calculator-row calculator-columns" aria-hidden="true"><span>类型</span><span>Token</span><span>单价 / 1M Token ($)</span><span>费用 ($)</span></div>
+            <div class="calculator-row"><label for="calc-input-tokens">未缓存输入</label><input id="calc-input-tokens" aria-label="未缓存输入 Token" aria-describedby="calc-input-magnitude" type="text" inputmode="numeric" value="0" required><input id="calc-input-price" aria-label="未缓存输入单价，美元每百万 Token" type="number" min="0" step="any" placeholder="—"><output id="calc-input-cost">—</output><small id="calc-input-magnitude" class="token-magnitude"></small></div>
+            <div class="calculator-row"><label for="calc-cached-tokens">缓存读取</label><input id="calc-cached-tokens" aria-label="缓存读取 Token" aria-describedby="calc-cached-magnitude" type="text" inputmode="numeric" value="0" required><input id="calc-cached-price" aria-label="缓存读取单价，美元每百万 Token" type="number" min="0" step="any" placeholder="—"><output id="calc-cached-cost">—</output><small id="calc-cached-magnitude" class="token-magnitude"></small></div>
+            <div class="calculator-row"><label for="calc-write-tokens">缓存写入</label><input id="calc-write-tokens" aria-label="缓存写入 Token" aria-describedby="calc-write-magnitude" type="text" inputmode="numeric" value="0" required><input id="calc-write-price" aria-label="缓存写入单价，美元每百万 Token" type="number" min="0" step="any" placeholder="—"><output id="calc-write-cost">—</output><small id="calc-write-magnitude" class="token-magnitude"></small></div>
+            <div class="calculator-row"><label for="calc-output-tokens">输出</label><input id="calc-output-tokens" aria-label="输出 Token" aria-describedby="calc-output-magnitude" type="text" inputmode="numeric" value="0" required><input id="calc-output-price" aria-label="输出单价，美元每百万 Token" type="number" min="0" step="any" placeholder="—"><output id="calc-output-cost">—</output><small id="calc-output-magnitude" class="token-magnitude"></small></div>
+            <p id="calculator-error" class="error" role="status"></p>
+            <p id="calculator-storage" class="metadata" role="status"></p>
+          </form>
+        </div>
       </div>
     </main>
   </div>
