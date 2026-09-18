@@ -11,25 +11,41 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
 
-// Run executes a CLI command, or serves the dashboard when args is empty.
+// Run executes a CLI command or starts the dashboard with listener options.
 func Run(args []string, version string) error {
-	if len(args) == 0 {
-		return run()
-	}
-	if args[0] == "version" || args[0] == "--version" {
+	if len(args) > 0 && (args[0] == "version" || args[0] == "--version") {
 		if len(args) != 1 {
 			return errors.New("unexpected version arguments")
 		}
 		fmt.Println(version)
 		return nil
 	}
-	if args[0] == "help" || args[0] == "--help" {
-		fmt.Println("codex-tally [export|sync|build-pages|version]\nNo command: start the local dashboard. Use COMMAND -h for options.")
-		return nil
+	if len(args) > 0 && args[0] == "help" {
+		args = []string{"-h"}
+	}
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		flags := flag.NewFlagSet("codex-tally", flag.ContinueOnError)
+		host := flags.String("host", cmp.Or(os.Getenv("HOST"), "127.0.0.1"), "listen IP or localhost (environment: HOST)")
+		port := flags.String("port", cmp.Or(os.Getenv("PORT"), "4318"), "listen port, 1–65535 (environment: PORT)")
+		flags.Usage = func() {
+			fmt.Fprintln(flags.Output(), "codex-tally [-host IP] [-port PORT]\ncodex-tally [export|sync|build-pages|version]\nUse COMMAND -h for command options.")
+			flags.PrintDefaults()
+		}
+		if err := flags.Parse(args); err != nil {
+			if errors.Is(err, flag.ErrHelp) {
+				return nil
+			}
+			return err
+		}
+		if flags.NArg() != 0 {
+			return errors.New("unexpected dashboard arguments")
+		}
+		return run(*host, *port)
 	}
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	switch args[0] {

@@ -39,15 +39,23 @@ Windows 将输出文件名改为 `codex-tally.exe`。使用 Pages 同步时，�
 ./codex-tally
 ```
 
-Windows PowerShell 使用 `.\codex-tally.exe`。打开 <http://localhost:4318>，使用启动日志中的“本次登录密码”登录。每次启动都会生成新密码，不写入文件。
+Windows PowerShell 使用 `.\codex-tally.exe`。打开 <http://localhost:4318>，使用启动日志中的“本次登录密码”登录。每次启动都会随机生成 12 位密码，不写入文件。
 
-需要固定密码时，设置 `CODEX_TALLY_PASSWORD`（至少 16 字符）：
+需要固定密码时，设置 `CODEX_TALLY_PASSWORD`（至少 8 个字符）：
 
 ```bash
-CODEX_TALLY_PASSWORD='your-fixed-password-at-least-16-chars' ./codex-tally
+CODEX_TALLY_PASSWORD='your-fixed-password' ./codex-tally
 ```
 
-PowerShell 先设置 `$env:CODEX_TALLY_PASSWORD = '你的固定密码'` 再启动。指定的密码不会输出到日志。
+PowerShell 先设置 `$env:CODEX_TALLY_PASSWORD = 'your-fixed-password'` 再启动。指定的密码不会输出到日志。
+
+通过参数指定监听地址和端口（将 IP 替换为本机地址）：
+
+```bash
+./codex-tally --host 192.168.1.10 --port 8080
+```
+
+此时访问 `http://192.168.1.10:8080`。监听全部 IPv4 接口用 `--host 0.0.0.0`，IPv6 用 `--host ::`。也可设置 `HOST`、`PORT` 环境变量；命令行参数优先。
 
 程序默认读取当前用户的 `.codex`，可通过 `CODEX_HOME` 指定其他目录。账号统计需要文件形式的 `auth.json`；本机统计不需要登录凭证。
 

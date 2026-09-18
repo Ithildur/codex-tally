@@ -25,6 +25,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode/utf8"
 )
 
 //go:embed public/*
@@ -70,15 +71,19 @@ func newApplication(ctx context.Context, c config, password string) (*applicatio
 		}
 		c.Origin = "https://" + u.Host
 	}
-	ip := net.ParseIP(c.Host)
-	if (ip == nil || !ip.IsLoopback()) && c.Host != "localhost" && c.Origin == "" {
-		return nil, errors.New("远程监听需要 HTTPS PUBLIC_ORIGIN")
+	if net.ParseIP(c.Host) == nil && !strings.EqualFold(c.Host, "localhost") && c.Origin == "" {
+		return nil, errors.New("监听地址必须是 IP 地址或 localhost")
+	}
+	port, err := strconv.Atoi(c.Port)
+	if err != nil || port < 1 || port > 65535 {
+		return nil, errors.New("监听端口必须是 1–65535")
+	}
+	c.Port = strconv.Itoa(port)
+	if utf8.RuneCountInString(password) < 8 {
+		return nil, errors.New("仪表盘密码至少需要 8 个字符")
 	}
 	if err := os.MkdirAll(c.State, 0700); err != nil {
 		return nil, err
-	}
-	if len(password) < 16 {
-		return nil, errors.New("仪表盘密码至少需要 16 个字符")
 	}
 	salt := []byte(randomToken())
 	local, err := newLocalStore(ctx, c.Root, c.State)
@@ -108,11 +113,19 @@ func (a *application) validHost(authority string) bool {
 		host, port = authority, "80"
 	}
 	host = strings.ToLower(host)
-	if host != "localhost" && host != "127.0.0.1" && host != "::1" && host != "[::1]" {
+	n, err := strconv.Atoi(port)
+	if err != nil || n < 1 || n > 65535 {
 		return false
 	}
-	n, err := strconv.Atoi(port)
-	return err == nil && n > 0 && n <= 65535 && (a.config.Origin == "" || port == a.config.Port)
+	listenPort, _ := strconv.Atoi(a.config.Port)
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]" {
+		return a.config.Origin == "" || n == listenPort
+	}
+	if a.config.Origin != "" || n != listenPort {
+		return false
+	}
+	bound, requested := net.ParseIP(a.config.Host), net.ParseIP(host)
+	return bound != nil && requested != nil && (bound.IsUnspecified() || bound.Equal(requested))
 }
 func (a *application) validOrigin(r *http.Request) bool {
 	expected := cmp.Or(a.config.Origin, "http://"+r.Host)
@@ -321,7 +334,7 @@ func (a *application) localUsage(w http.ResponseWriter, r *http.Request) {
 	result.Error = message
 	sendJSON(w, 200, result)
 }
-func run() error {
+func run(host, port string) error {
 	executable, err := os.Executable()
 	if err != nil {
 		return err
@@ -338,21 +351,21 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	c := config{Host: cmp.Or(os.Getenv("HOST"), "127.0.0.1"), Port: cmp.Or(os.Getenv("PORT"), "4318"), Origin: os.Getenv("PUBLIC_ORIGIN"), State: cmp.Or(os.Getenv("DASHBOARD_STATE_DIR"), filepath.Join(filepath.Dir(executable), ".state-codex-tally")), Root: root, Home: home, Pricing: os.Getenv("PRICING_FILE")}
+	c := config{Host: host, Port: port, Origin: os.Getenv("PUBLIC_ORIGIN"), State: cmp.Or(os.Getenv("DASHBOARD_STATE_DIR"), filepath.Join(filepath.Dir(executable), ".state-codex-tally")), Root: root, Home: home, Pricing: os.Getenv("PRICING_FILE")}
 	c.Share = os.Getenv("PUBLIC_SHARE") == "1"
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	password := os.Getenv("CODEX_TALLY_PASSWORD")
 	generated := password == ""
 	if generated {
-		password = randomToken()
+		password = randomToken()[:12]
 	}
 	app, err := newApplication(ctx, c, password)
 	if err != nil {
 		return err
 	}
 	app.local.run(time.Hour)
-	server := &http.Server{Addr: net.JoinHostPort(c.Host, c.Port), Handler: app.handler(), ReadHeaderTimeout: 15 * time.Second, ReadTimeout: 30 * time.Second, IdleTimeout: time.Minute, BaseContext: func(net.Listener) context.Context { return ctx }}
+	server := &http.Server{Addr: net.JoinHostPort(app.config.Host, app.config.Port), Handler: app.handler(), ReadHeaderTimeout: 15 * time.Second, ReadTimeout: 30 * time.Second, IdleTimeout: time.Minute, BaseContext: func(net.Listener) context.Context { return ctx }}
 	listener, err := net.Listen("tcp", server.Addr)
 	if err != nil {
 		stop()
@@ -361,7 +374,7 @@ func run() error {
 	}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
-	log.Printf("Codex 用量仪表盘：%s", cmp.Or(c.Origin, "http://localhost:"+c.Port))
+	log.Printf("Codex 用量仪表盘：%s", cmp.Or(app.config.Origin, "http://"+listener.Addr().String()))
 	if generated {
 		log.Printf("本次登录密码：%s", password)
 	}

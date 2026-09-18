@@ -1,14 +1,32 @@
 # 配置
 
+## 监听地址与端口
+
+```bash
+./codex-tally --host 192.168.1.10 --port 8080
+# 等价的环境变量配置
+HOST=192.168.1.10 PORT=8080 ./codex-tally
+```
+
+`--host` 和 `--port` 分别覆盖 `HOST` 和 `PORT`，默认 `127.0.0.1:4318`。端口范围为 1–65535；监听指定 IP 时，该地址必须属于本机。`--host 0.0.0.0` 监听所有 IPv4 接口，`--host ::` 监听 IPv6。
+
+使用本机实际 IP 和配置的端口访问。直接通过 IP 访问不要求设置 `PUBLIC_ORIGIN`；该配置用于 HTTPS 域名反向代理。任意域名不会因监听全部接口而自动放行。
+
+```powershell
+.\codex-tally.exe --host 192.168.1.10 --port 8080
+```
+
+`--help` 查看启动选项，`export -h` 等查看子命令选项。
+
 ## 环境变量
 
 | 变量 | 默认值 / 用途 |
 | --- | --- |
-| `HOST` | `127.0.0.1` |
-| `PORT` | `4318` |
+| `HOST` | 监听地址，默认 `127.0.0.1`；支持 IPv4、IPv6 和 localhost |
+| `PORT` | 监听端口，默认 `4318`，范围 1–65535 |
 | `PUBLIC_ORIGIN` | 远程管理端的 HTTPS 地址，如 `https://usage.example.com` |
 | `PUBLIC_SHARE` | 设为 `1` 开启匿名分享 |
-| `CODEX_TALLY_PASSWORD` | 固定密码，至少 16 字符；未设置或为空时，每次启动随机生成并输出到控制台 |
+| `CODEX_TALLY_PASSWORD` | 固定密码，至少 8 个字符；未设置或为空时，每次启动随机生成 12 位密码并输出到控制台 |
 | `DASHBOARD_STATE_DIR` | 可执行文件旁的 `.state-codex-tally` |
 | `CODEX_HOME` | 当前用户的 `.codex` |
 | `TZ` | 系统时区；可指定 `Asia/Hong_Kong` 等 IANA 名称 |
@@ -47,6 +65,8 @@ Windows 原生与 WSL 的用户目录相互独立，不自动扫描或合并。�
 ## 登录与状态
 
 仪表盘密码与 Codex 登录凭证分开。未指定密码时，成功启动后在控制台输出“本次登录密码”，仅本次运行有效；指定 `CODEX_TALLY_PASSWORD` 后使用该密码，不输出到日志。程序不读写密码文件。
+
+密码按 Unicode 字符数计算，中文和英文字符均计为一个字符。
 
 升级时将原有的 `DASHBOARD_PASSWORD` 改为 `CODEX_TALLY_PASSWORD`；程序不再读取旧变量。
 
