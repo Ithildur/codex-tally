@@ -14,8 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const full = value => value == null ? '—' : new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(value);
-const compact = value => value == null ? '—' : new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(value);
-const money = (value, currency = 'USD') => new Intl.NumberFormat('zh-CN', { style: 'currency', currency, currencyDisplay: 'narrowSymbol', maximumFractionDigits: 2 }).format(value);
+const compact = (value, minimumFractionDigits = 0) => value == null ? '—' : new Intl.NumberFormat('en-US', { notation: 'compact', minimumFractionDigits, maximumFractionDigits: 2 }).format(value);
+const money = (value, currency = 'USD') => new Intl.NumberFormat('zh-CN', { style: 'currency', currency, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const text = (id, value) => { $(id).textContent = value; };
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
@@ -498,14 +498,14 @@ async function load(refresh, viewChanged = false) {
 
 function renderLocal(data) {
   timezone = data.range.timezone;
-  number('total-tokens', compact(data.tokens)); $('total-tokens').title = `${full(data.tokens)} Token`;
+  number('total-tokens', compact(data.tokens, 2)); $('total-tokens').title = `${full(data.tokens)} Token`;
   number('total-calls', full(data.calls));
-  number('cache-rate', data.cacheRate == null ? '—' : `${data.cacheRate.toFixed(1)}%`);
+  number('cache-rate', data.cacheRate == null ? '—' : `${data.cacheRate.toFixed(2)}%`);
   number('total-cost', data.cost == null ? '—' : money(data.cost, data.currency.code));
-  number('output-tokens', compact(data.output));
-  number('input-tokens', compact(data.input + data.cached + data.write));
+  number('output-tokens', compact(data.output, 2));
+  number('input-tokens', compact(data.input + data.cached + data.write, 2));
   number('session-detail', full(data.sessions));
-  number('cache-detail', compact(data.cached));
+  number('cache-detail', compact(data.cached, 2));
   $('cost-detail').hidden = !data.unpricedCalls;
   number('cost-detail', data.unpricedCalls ? `${full(data.unpricedCalls)} 次未计价` : '');
   text('local-error', data.error || (data.unreadable || data.malformed ? `${data.unreadable} 个文件、${data.malformed} 条记录不完整` : data.files === 0 ? '未发现本机会话记录' : ''));
