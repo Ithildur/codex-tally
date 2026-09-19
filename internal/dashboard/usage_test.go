@@ -160,7 +160,7 @@ func TestOldCacheRebuilt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := snapshot{Version: 1, Source: store.source, FetchedAt: time.Now(), Files: map[string]session{}}
+	old := snapshot{Version: 2, Source: store.source, FetchedAt: time.Now(), Files: map[string]session{}}
 	if err := atomicJSON(store.path, old); err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestOldCacheRebuilt(t *testing.T) {
 		t.Fatal("obsolete accounting cache reused")
 	}
 	<-restarted.refresh()
-	if data, _, _ := restarted.view(); data == nil || data.Version != 2 {
+	if data, _, _ := restarted.view(); data == nil || data.Version != 3 {
 		t.Fatal("cache not rebuilt")
 	}
 }

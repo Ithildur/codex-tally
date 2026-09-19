@@ -199,6 +199,10 @@ func (a *application) handler() http.Handler {
 		sendJSON(w, 200, map[string]bool{"ok": true})
 	})
 	mux.HandleFunc("GET /api/local", a.localUsage)
+	mux.HandleFunc("GET /api/local/status", func(w http.ResponseWriter, r *http.Request) {
+		data, _, _ := a.local.view()
+		sendJSON(w, 200, map[string]bool{"ready": data != nil})
+	})
 	mux.HandleFunc("GET /api/pricing", func(w http.ResponseWriter, r *http.Request) {
 		prices, err := loadPrices(a.config.Home, a.config.Pricing)
 		if err != nil {

@@ -310,6 +310,26 @@ async function api(path, options = {}) {
   if (!response.ok) throw new Error(data.error || '请求失败，请重试');
   return data;
 }
+let analysisRequest;
+let analysisDismissed = false;
+$('local-analysis').addEventListener('cancel', () => { analysisDismissed = true; });
+async function readLocal(params, signal) {
+  try {
+    const status = await api('/api/local/status', { signal });
+    signal.throwIfAborted();
+    if (status.ready) analysisDismissed = false;
+    else {
+      analysisRequest = signal;
+      if (!analysisDismissed && !$('local-analysis').open) $('local-analysis').showModal();
+    }
+    return await api(`/api/local?${params}`, { signal });
+  } finally {
+    if (analysisRequest === signal) {
+      analysisRequest = null;
+      $('local-analysis').close();
+    }
+  }
+}
 function showLogin() {
   if ($('share-hub').open) $('share-hub').close();
   sequence++; activeRequest?.abort();
@@ -324,6 +344,7 @@ function showLogin() {
   resetPanel('local'); resetPanel('account');
   calculatorRequest?.abort(); calculatorPricesRequest?.abort();
   clearCalculatorUsage();
+  analysisRequest = null; analysisDismissed = false; $('local-analysis').close();
   $('dashboard').hidden = true; $('login').hidden = false; $('boot').hidden = true;
   $('password').value = ''; $('password').focus();
 }
@@ -453,13 +474,13 @@ async function load(refresh, viewChanged = false) {
   }
   try {
     if (source === 'local' && !refresh) {
-      const cached = await api(`/api/local?${params}`, { signal });
+      const cached = await readLocal(params, signal);
       if (!receive(cached)) return;
       // Paint the cached numbers before starting the one-off revalidation.
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     }
     if (source === 'local' || refresh) params.set('refresh', '1');
-    const fresh = await api(`/api/${source}?${params}`, { signal });
+    const fresh = source === 'local' ? await readLocal(params, signal) : await api(`/api/${source}?${params}`, { signal });
     receive(fresh);
   } catch (error) {
     if (current !== sequence || error.name === 'AbortError') return;
@@ -753,7 +774,7 @@ $('calculator-import').addEventListener('click', async () => {
   if ($('period').value.startsWith('custom')) params.set('end', $('window-end').value);
   $('calculator-import').disabled = true;
   try {
-    const data = views.get(`local:${params}`) ?? await api(`/api/local?${params}`, { signal: request.signal });
+    const data = views.get(`local:${params}`) ?? await readLocal(params, request.signal);
     if (request.signal.aborted) return;
     if (data.error) throw new Error(data.error);
     if (!calculatorFields.every(field => Number.isSafeInteger(data[field]) && data[field] >= 0)) throw new Error('本机用量不完整，请刷新后重试。');

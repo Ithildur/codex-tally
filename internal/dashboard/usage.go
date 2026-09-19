@@ -90,6 +90,8 @@ type event struct {
 	Output    int64  `json:"output"`
 	Reasoning int64  `json:"reasoning"`
 	Tokens    int64  `json:"tokens"`
+	// Full input (including cache) of one response; nil for cumulative-only logs.
+	RequestInput *int64 `json:"requestInput,omitempty"`
 }
 type session struct {
 	Size      int64   `json:"size"`
@@ -154,6 +156,7 @@ func parseSession(ctx context.Context, path string) (session, error) {
 					id := cmp.Or(p.Turn, turn)
 					e, err := usageEvent(row.Timestamp, cmp.Or(p.Model, models[id], "unknown"), *p.Usage)
 					if err == nil {
+						e.RequestInput = new(p.Usage.Input)
 						modern[p.Response] = reading{e, id}
 						modernTurns[id] = true
 					}
@@ -169,6 +172,9 @@ func parseSession(ctx context.Context, path string) (session, error) {
 					}
 					prev = new(current)
 					e, err := usageEvent(row.Timestamp, model, delta)
+					if p.Info.Last != nil {
+						e.RequestInput = new(delta.Input)
+					}
 					if !duplicate && !(reset && p.Info.Last == nil) && err == nil {
 						if e.Tokens > 0 {
 							legacy = append(legacy, reading{e, turn})

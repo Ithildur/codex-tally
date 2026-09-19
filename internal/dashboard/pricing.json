@@ -1,12 +1,223 @@
 {
-  "updatedAt": "2026-09-16",
+  "updatedAt": "2026-09-19",
   "models": {
+    "gpt-5": {
+      "inputCostPerToken": 0.00000125,
+      "cacheReadCostPerToken": 1.25e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.00001,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5"
+    },
+    "gpt-5-mini": {
+      "inputCostPerToken": 2.5e-7,
+      "cacheReadCostPerToken": 2.5000000000000002e-8,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.000002,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5-mini"
+    },
+    "gpt-5-nano": {
+      "inputCostPerToken": 5.0000000000000004e-8,
+      "cacheReadCostPerToken": 5e-9,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 4.0000000000000003e-7,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5-nano"
+    },
+    "gpt-5-codex": {
+      "inputCostPerToken": 0.00000125,
+      "cacheReadCostPerToken": 1.25e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.00001,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5-codex"
+    },
+    "gpt-5.1": {
+      "inputCostPerToken": 0.00000125,
+      "cacheReadCostPerToken": 1.25e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.00001,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.1"
+    },
+    "gpt-5.1-codex": {
+      "inputCostPerToken": 0.00000125,
+      "cacheReadCostPerToken": 1.25e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.00001,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.1-codex"
+    },
+    "gpt-5.1-codex-mini": {
+      "inputCostPerToken": 2.5e-7,
+      "cacheReadCostPerToken": 2.5000000000000002e-8,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.000002,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.1-codex-mini"
+    },
+    "gpt-5.1-codex-max": {
+      "inputCostPerToken": 0.00000125,
+      "cacheReadCostPerToken": 1.25e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.00001,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.1-codex-max"
+    },
+    "gpt-5.2": {
+      "inputCostPerToken": 0.00000175,
+      "cacheReadCostPerToken": 1.75e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.000014,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.2"
+    },
+    "gpt-5.2-codex": {
+      "inputCostPerToken": 0.00000175,
+      "cacheReadCostPerToken": 1.75e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.000014,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.2-codex"
+    },
+    "gpt-5.3-codex": {
+      "inputCostPerToken": 0.00000175,
+      "cacheReadCostPerToken": 1.75e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.000014,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.3-codex"
+    },
+    "gpt-5.4": {
+      "inputCostPerToken": 0.0000025,
+      "cacheReadCostPerToken": 2.5e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.000015,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.4",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
+    "gpt-5.4-mini": {
+      "inputCostPerToken": 7.5e-7,
+      "cacheReadCostPerToken": 7.5e-8,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.0000045,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.4-mini"
+    },
+    "gpt-5.4-nano": {
+      "inputCostPerToken": 2.0000000000000002e-7,
+      "cacheReadCostPerToken": 2e-8,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.00000125,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.4-nano"
+    },
+    "gpt-5.5": {
+      "inputCostPerToken": 0.000005,
+      "cacheReadCostPerToken": 5e-7,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": 0.00003,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.5",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
+    "gpt-5.6-sol": {
+      "inputCostPerToken": 0.000004,
+      "cacheReadCostPerToken": 4.0000000000000003e-7,
+      "cacheWriteCostPerToken": 0.000005,
+      "outputCostPerToken": 0.00002,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
+    "gpt-5.6-terra": {
+      "inputCostPerToken": 0.000002,
+      "cacheReadCostPerToken": 2.0000000000000002e-7,
+      "cacheWriteCostPerToken": 0.0000025,
+      "outputCostPerToken": 0.000012,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.6-terra",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
+    "gpt-5.6-luna": {
+      "inputCostPerToken": 2.0000000000000002e-7,
+      "cacheReadCostPerToken": 2e-8,
+      "cacheWriteCostPerToken": 2.5e-7,
+      "outputCostPerToken": 0.0000012,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
+    "gpt-5.6-cyber": {
+      "inputCostPerToken": 0.0000125,
+      "cacheReadCostPerToken": 0.00000125,
+      "cacheWriteCostPerToken": 0.000015625,
+      "outputCostPerToken": 0.000075,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.6-cyber",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
     "gpt-6-astra": {
       "inputCostPerToken": 0.00001,
       "cacheReadCostPerToken": 0.000001,
       "cacheWriteCostPerToken": 0.0000125,
       "outputCostPerToken": 0.00005,
-      "source": "https://developers.openai.com/api/docs/models/gpt-6-astra"
+      "source": "https://developers.openai.com/api/docs/models/gpt-6-astra",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
+    "gpt-5.6": {
+      "inputCostPerToken": 0.000004,
+      "cacheReadCostPerToken": 4.0000000000000003e-7,
+      "cacheWriteCostPerToken": 0.000005,
+      "outputCostPerToken": 0.00002,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
+    "gpt-daybreak-blue-latest": {
+      "inputCostPerToken": 0.000004,
+      "cacheReadCostPerToken": 4.0000000000000003e-7,
+      "cacheWriteCostPerToken": 0.000005,
+      "outputCostPerToken": 0.00002,
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
+    "gpt-daybreak-red-latest": {
+      "inputCostPerToken": 0.0000125,
+      "cacheReadCostPerToken": 0.00000125,
+      "cacheWriteCostPerToken": 0.000015625,
+      "outputCostPerToken": 0.000075,
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "longContext": {
+        "aboveInputTokens": 272000,
+        "inputMultiplier": 2,
+        "outputMultiplier": 1.5
+      }
+    },
+    "gpt-5.3-codex-spark": {
+      "inputCostPerToken": null,
+      "cacheReadCostPerToken": null,
+      "cacheWriteCostPerToken": null,
+      "outputCostPerToken": null,
+      "source": "https://learn.chatgpt.com/docs/pricing"
     }
   }
 }

@@ -17,11 +17,17 @@ import (
 var officialPricing []byte
 
 type price struct {
-	Input  *float64 `json:"inputCostPerToken"`
-	Cached *float64 `json:"cacheReadCostPerToken"`
-	Write  *float64 `json:"cacheWriteCostPerToken"`
-	Output *float64 `json:"outputCostPerToken"`
-	Source string   `json:"source"`
+	Input       *float64          `json:"inputCostPerToken"`
+	Cached      *float64          `json:"cacheReadCostPerToken"`
+	Write       *float64          `json:"cacheWriteCostPerToken"`
+	Output      *float64          `json:"outputCostPerToken"`
+	Source      string            `json:"source"`
+	LongContext *longContextPrice `json:"longContext,omitempty"`
+}
+type longContextPrice struct {
+	AboveInputTokens int64   `json:"aboveInputTokens"`
+	InputMultiplier  float64 `json:"inputMultiplier"`
+	OutputMultiplier float64 `json:"outputMultiplier"`
 }
 type priceBook struct {
 	UpdatedAt string           `json:"updatedAt"`
@@ -32,7 +38,7 @@ type currency struct {
 	Rate float64 `json:"rate"`
 }
 
-var modelDate = regexp.MustCompile(`-\d{8}$`)
+var modelDate = regexp.MustCompile(`-(\d{8}|\d{4}-\d{2}-\d{2})$`)
 
 func loadPrices(home, override string) (priceBook, error) {
 	var book priceBook
@@ -79,6 +85,12 @@ func (p price) validate() error {
 			return errors.New("价格必须为非负有限数")
 		}
 	}
+	if p.LongContext != nil {
+		c := p.LongContext
+		if c.AboveInputTokens <= 0 || c.InputMultiplier <= 0 || c.OutputMultiplier <= 0 || math.IsNaN(c.InputMultiplier) || math.IsNaN(c.OutputMultiplier) || math.IsInf(c.InputMultiplier, 0) || math.IsInf(c.OutputMultiplier, 0) {
+			return errors.New("长上下文阈值和倍率必须为正有限数")
+		}
+	}
 	return nil
 }
 func (b priceBook) cost(e event) (float64, bool) {
@@ -95,18 +107,23 @@ func (b priceBook) cost(e event) (float64, bool) {
 	if !ok || p.validate() != nil {
 		return 0, false
 	}
+	inputMultiplier, outputMultiplier := 1.0, 1.0
+	if c := p.LongContext; c != nil && e.RequestInput != nil && *e.RequestInput > c.AboveInputTokens {
+		inputMultiplier, outputMultiplier = c.InputMultiplier, c.OutputMultiplier
+	}
 	total := 0.0
 	for _, term := range []struct {
-		n    int64
-		rate *float64
-	}{{e.Input, p.Input}, {e.Cached, p.Cached}, {e.Write, p.Write}, {e.Output, p.Output}} {
+		n          int64
+		rate       *float64
+		multiplier float64
+	}{{e.Input, p.Input, inputMultiplier}, {e.Cached, p.Cached, inputMultiplier}, {e.Write, p.Write, inputMultiplier}, {e.Output, p.Output, outputMultiplier}} {
 		if term.n == 0 {
 			continue
 		}
 		if term.rate == nil {
 			return 0, false
 		}
-		total += float64(term.n) * *term.rate
+		total += float64(term.n) * *term.rate * term.multiplier
 	}
 	return total, true
 }
