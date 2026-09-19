@@ -46,7 +46,7 @@ func newLocalStore(ctx context.Context, root, state string) (*localStore, error)
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		s.lastError = "缓存无法读取，正在重新统计"
-		log.Print("本机缓存无法读取，将重新扫描")
+		log.Print(consoleText("本机缓存无法读取，将重新扫描"))
 	}
 	return s, nil
 }
@@ -66,12 +66,12 @@ func (s *localStore) refresh() <-chan struct{} {
 	old := s.current
 	s.wg.Go(func() {
 		next, err := s.scan(old)
-		if err == nil {
+		if err == nil && next != old {
 			err = atomicJSON(s.path, next)
 		}
-		if err == nil && s.public != nil {
+		if err == nil && next != old && s.public != nil {
 			if publishErr := s.public.publish(next); publishErr != nil {
-				log.Printf("公开快照更新失败，保留上次内容: %v", publishErr)
+				log.Printf(consoleText("公开快照更新失败，保留上次内容: %v"), publishErr)
 			}
 		}
 		s.mu.Lock()
@@ -81,7 +81,7 @@ func (s *localStore) refresh() <-chan struct{} {
 				s.lastError = "本机数据分析失败，请重试"
 			}
 			if !errors.Is(err, context.Canceled) {
-				log.Printf("本机缓存更新失败: %v", err)
+				log.Printf(consoleText("本机缓存更新失败: %v"), err)
 			}
 		} else {
 			s.current = next
@@ -112,6 +112,7 @@ func (s *localStore) run(interval time.Duration) {
 }
 func (s *localStore) scan(old *snapshot) (*snapshot, error) {
 	next := &snapshot{Version: 3, Source: s.source, Files: map[string]session{}}
+	unchanged := old != nil
 	for _, dir := range []string{"sessions", "archived_sessions"} {
 		root := filepath.Join(s.root, dir)
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
@@ -142,6 +143,7 @@ func (s *localStore) scan(old *snapshot) (*snapshot, error) {
 				return nil
 			}
 			var parsed session
+			unchanged = false
 			if err == nil {
 				parsed, err = parseSession(s.ctx, path)
 			}
@@ -165,6 +167,11 @@ func (s *localStore) scan(old *snapshot) (*snapshot, error) {
 		}
 	}
 	next.FetchedAt = time.Now()
+	// Reuse unchanged data; live polling should not rewrite the cache or shares.
+	// A new month still needs a new public snapshot, even with no new sessions.
+	if unchanged && len(next.Files) == len(old.Files) && next.Unreadable == old.Unreadable && next.FetchedAt.Format("2006-01") == old.FetchedAt.In(time.Local).Format("2006-01") {
+		return old, nil
+	}
 	return next, nil
 }
 func atomicJSON(path string, data any) error {

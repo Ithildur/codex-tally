@@ -66,11 +66,11 @@ type publicRow struct {
 
 type publicView struct {
 	publicUsage
-	Component, Theme, Title, Value string
-	Width, Height, RowsY           int
-	Rows                           []publicRow
-	Parts                          []publicPart
-	Columns                        int
+	Component, Theme, Title, Value, Language string
+	Width, Height, RowsY                     int
+	Rows                                     []publicRow
+	Parts                                    []publicPart
+	Columns                                  int
 }
 
 func compactCount(n int64) string {
@@ -222,17 +222,24 @@ func renderPublicAssets(view publicUsage, allowed int) (map[string][]byte, error
 		v.Columns = max(1, v.Columns)
 		views[hubPath(mask)] = v
 	}
-	assets := make(map[string][]byte, len(views)*6)
+	assets := make(map[string][]byte, len(views)*12)
 	for key, view := range views {
 		for _, theme := range []string{"auto", "light", "dark"} {
 			v := view
 			v.Theme = theme
-			for _, format := range []string{"html", "svg"} {
-				var output bytes.Buffer
-				if err := shareTemplate.ExecuteTemplate(&output, "share."+format, v); err != nil {
-					return nil, err
+			for _, language := range []string{"zh-CN", "en"} {
+				v.Language = language
+				suffix := ""
+				if language == "en" {
+					suffix = ".en"
 				}
-				assets[key+"/"+theme+"."+format] = output.Bytes()
+				for _, format := range []string{"html", "svg"} {
+					var output bytes.Buffer
+					if err := shareTemplate.ExecuteTemplate(&output, "share."+format, v); err != nil {
+						return nil, err
+					}
+					assets[key+"/"+theme+suffix+"."+format] = output.Bytes()
+				}
 			}
 		}
 	}
@@ -240,15 +247,24 @@ func renderPublicAssets(view publicUsage, allowed int) (map[string][]byte, error
 }
 
 func (a *application) serveShare(w http.ResponseWriter, r *http.Request) {
+	language := "zh-CN"
+	if r.URL.Query().Get("lang") == "en" {
+		language = "en"
+	}
+	w.Header().Set("Content-Language", language)
+	fail := func(status int, message string) {
+		sendError(w, status, (publicView{Language: language}).Text(message))
+	}
+
 	if !a.config.Share {
-		sendError(w, http.StatusNotFound, "公开展示未启用")
+		fail(http.StatusNotFound, "公开展示未启用")
 		return
 	}
 	component, format := r.PathValue("component"), "html"
 	if component == "embed.js" {
 		raw, err := webFiles.ReadFile("public/embed.js")
 		if err != nil {
-			sendError(w, 500, "嵌入脚本不可用")
+			fail(500, "嵌入脚本不可用")
 			return
 		}
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
@@ -265,7 +281,7 @@ func (a *application) serveShare(w http.ResponseWriter, r *http.Request) {
 		component, format = name, "svg"
 	}
 	if _, ok := publicComponents[component]; !ok && component != "hub" {
-		sendError(w, http.StatusNotFound, "公开组件不存在")
+		fail(http.StatusNotFound, "公开组件不存在")
 		return
 	}
 	key := component
@@ -275,28 +291,32 @@ func (a *application) serveShare(w http.ResponseWriter, r *http.Request) {
 			selected = r.URL.Query().Get("components")
 		}
 		if len(selected) > 64 {
-			sendError(w, http.StatusBadRequest, "组件组合无效")
+			fail(http.StatusBadRequest, "组件组合无效")
 			return
 		}
 		mask, err := componentMask(selected)
 		if err != nil {
-			sendError(w, http.StatusBadRequest, "组件组合无效")
+			fail(http.StatusBadRequest, "组件组合无效")
 			return
 		}
 		key = hubPath(mask)
 	}
 	theme := cmp.Or(r.URL.Query().Get("theme"), "auto")
 	if theme != "auto" && theme != "light" && theme != "dark" {
-		sendError(w, http.StatusBadRequest, "不支持的主题")
+		fail(http.StatusBadRequest, "不支持的主题")
 		return
 	}
 	p := a.local.public
+	suffix := ""
+	if r.URL.Query().Get("lang") == "en" {
+		suffix = ".en"
+	}
 	p.mu.RLock()
-	page := p.assets[key+"/"+theme+"."+format]
+	page := p.assets[key+"/"+theme+suffix+"."+format]
 	p.mu.RUnlock()
 	if page == nil {
 		w.Header().Set("Retry-After", "60")
-		sendError(w, http.StatusServiceUnavailable, "公开快照尚未生成")
+		fail(http.StatusServiceUnavailable, "公开快照尚未生成")
 		return
 	}
 	// Only these public components permit embedding; private routes still deny framing.

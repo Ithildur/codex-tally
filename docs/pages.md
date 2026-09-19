@@ -80,6 +80,8 @@ Pages 首页可以选择组件、主题和复制格式。支持网页、SVG、Ma
 
 主题支持 `auto`、`light`、`dark`。只生成已导出组件及其组合，下一次成功部署会删除已取消字段对应的页面。数值组件横排，窄屏纵排，模型表占整行；iframe 通过附带的 `embed.js` 调整高度。
 
+Pages 首页默认跟随浏览器语言，可切换中文或 English。原有静态地址保持中文；英文文件在扩展名前增加 `.en`，例如 `tokens/auto.en.html`、`hub/tokens-calls/dark.en.svg`。首页按所选语言复制对应地址，SVG 不依赖 JavaScript 翻译。
+
 ## 本地预览
 
 ```bash

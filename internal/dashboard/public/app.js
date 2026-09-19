@@ -10,14 +10,17 @@
   document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#f8f9fb' : '#111214';
 })();
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+await CodexI18n.ready;
+const { t, language } = CodexI18n;
+CodexI18n.localize();
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-const full = value => value == null ? '—' : new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(value);
+const full = value => value == null ? '—' : new Intl.NumberFormat(language, { maximumFractionDigits: 2 }).format(value);
 const compact = (value, minimumFractionDigits = 0) => value == null ? '—' : new Intl.NumberFormat('en-US', { notation: 'compact', minimumFractionDigits, maximumFractionDigits: 2 }).format(value);
-const money = (value, currency = 'USD') => new Intl.NumberFormat('zh-CN', { style: 'currency', currency, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+const money = (value, currency = 'USD') => new Intl.NumberFormat(language, { style: 'currency', currency, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 const finite = value => typeof value === 'number' && Number.isFinite(value);
-const text = (id, value) => { $(id).textContent = value; };
+const text = (id, value) => { $(id).textContent = t(value); };
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 let themePreference = document.documentElement.dataset.themePreference || 'system';
 function setTheme(preference) {
@@ -28,7 +31,7 @@ function setTheme(preference) {
   document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#f8f9fb' : '#111214';
   const labels = { system: '系统', light: '浅色', dark: '深色' };
   text('theme-toggle', labels[themePreference]);
-  $('theme-toggle').setAttribute('aria-label', `主题：${themePreference === 'system' ? '跟随系统' : labels[themePreference]}`);
+  $('theme-toggle').setAttribute('aria-label', `${t('主题')}: ${t(themePreference === 'system' ? '跟随系统' : labels[themePreference])}`);
   for (const button of $('theme-options').querySelectorAll('button')) button.setAttribute('aria-pressed', String(button.dataset.themeChoice === themePreference));
 }
 setTheme(themePreference);
@@ -63,6 +66,7 @@ let sequence = 0;
 let activeRequest;
 let breakdown;
 let tab = 'local';
+let defaultLocalPeriod = !new URLSearchParams(location.search).has('period') || new URLSearchParams(location.search).get('tab') === 'account';
 const tabs = ['local', 'account', 'calculator'];
 function tabControl(id, source = tab) {
   return $(source === 'local' ? id : `account-${id}`);
@@ -78,7 +82,7 @@ function remoteDelay(result) {
 function armRefreshTimers() {
   clearTimeout(refreshTimer); clearTimeout(quotaTimer);
   if (document.hidden || $('dashboard').hidden) return;
-  if (Number.isFinite(refreshAt)) refreshTimer = setTimeout(() => load(false), Math.max(0, refreshAt - Date.now()));
+  if (Number.isFinite(refreshAt)) refreshTimer = setTimeout(() => load(false, false, tab === 'local' && $('live-mode').checked), Math.max(0, refreshAt - Date.now()));
   if (Number.isFinite(quotaAt)) quotaTimer = setTimeout(() => loadLimits(), Math.max(0, quotaAt - Date.now()));
 }
 document.addEventListener('visibilitychange', armRefreshTimers);
@@ -136,6 +140,7 @@ async function updateShare() {
   const page = new URL(`/share/${component}`, window.location.origin);
   if (component === 'hub') page.searchParams.set('components', selected.join(','));
   page.searchParams.set('theme', theme);
+  page.searchParams.set('lang', language);
   const svg = new URL(page);
   svg.pathname += '.svg';
   const isImage = format === 'svg' || format === 'markdown';
@@ -160,7 +165,7 @@ async function updateShare() {
   const preview = $('share-preview');
   preview.style.height = '';
   preview.setAttribute('aria-busy', 'true');
-  preview.innerHTML = '<span class="loading">加载预览…</span>';
+  preview.innerHTML = `<span class="loading">${t('加载预览…')}</span>`;
   text('share-preview-error', '');
   try {
     const response = await fetch(previewURL, { credentials: 'omit', signal: request.signal });
@@ -168,7 +173,7 @@ async function updateShare() {
     if (request.signal.aborted) return;
     const media = document.createElement(isImage ? 'img' : 'iframe');
     if (isImage) media.alt = title;
-    else { media.title = `${title}网页预览`; media.setAttribute('sandbox', 'allow-same-origin'); }
+    else { media.title = t('{title}网页预览', { title }); media.setAttribute('sandbox', 'allow-same-origin'); }
     media.addEventListener('load', () => {
       if (request.signal.aborted) return;
       if (!isImage) {
@@ -301,7 +306,7 @@ function number(id, value) {
 for (const element of document.querySelectorAll('[data-flap-label]')) number(element, element.textContent);
 
 function timestamp(value) {
-  return value ? new Date(value).toLocaleString('zh-CN', { timeZone: timezone === 'Local' ? undefined : timezone, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '尚无数据';
+  return value ? new Date(value).toLocaleString(language, { timeZone: timezone === 'Local' ? undefined : timezone, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : t('尚无数据');
 }
 async function api(path, options = {}) {
   const response = await fetch(path, { credentials: 'same-origin', ...options });
@@ -338,12 +343,13 @@ function showLogin() {
   text('quota-resets', '—'); text('reset-updated', ''); text('reset-error', ''); $('reset-credits').replaceChildren();
   $('plan').hidden = true;
   $('quota-five-summary').hidden = true;
-  $('limits').innerHTML = '<p class="loading">正在读取额度…</p>';
+  $('limits').innerHTML = `<p class="loading">${t('正在读取额度…')}</p>`;
   clearTimeout(refreshTimer); clearTimeout(quotaTimer);
   refreshAt = quotaAt = Infinity; views.clear();
   resetPanel('local'); resetPanel('account');
   calculatorRequest?.abort(); calculatorPricesRequest?.abort();
   clearCalculatorUsage();
+  $('live-mode').checked = false;
   analysisRequest = null; analysisDismissed = false; $('local-analysis').close();
   $('dashboard').hidden = true; $('login').hidden = false; $('boot').hidden = true;
   $('password').value = ''; $('password').focus();
@@ -406,15 +412,22 @@ function configurePeriod(source = tab) {
   }
 }
 for (const source of ['local', 'account']) {
-  tabControl('period', source).addEventListener('change', () => { configurePeriod(source); load(false, true); });
+  tabControl('period', source).addEventListener('change', () => { if (source === 'local') defaultLocalPeriod = false; configurePeriod(source); load(false, true); });
   tabControl('period-form', source).addEventListener('submit', event => { event.preventDefault(); load(false, true); });
   tabControl('refresh', source).addEventListener('click', () => load(true));
 }
 $('breakdown-date').addEventListener('change', renderBreakdown);
+$('live-mode').addEventListener('change', () => {
+  if ($('live-mode').checked) load(false, false, true);
+  else { refreshAt = Date.now() + 60 * 60 * 1000; armRefreshTimers(); }
+});
+let selectedHeatHour = null;
 $('heatmap').addEventListener('click', event => {
   const cell = event.target.closest('button[data-label]');
   if (!cell) return;
-  for (const button of $('heatmap').querySelectorAll('button')) button.tabIndex = button === cell ? 0 : -1;
+  const cells = [...$('heatmap').querySelectorAll('button')];
+  selectedHeatHour = cells.indexOf(cell);
+  for (const button of cells) button.tabIndex = button === cell ? 0 : -1;
   text('busiest', cell.dataset.label);
 });
 $('heatmap').addEventListener('keydown', event => {
@@ -433,17 +446,18 @@ function resetPanel(source) {
     for (const id of ['total-tokens', 'total-cost', 'total-calls', 'cache-rate', 'session-detail', 'cache-detail', 'output-tokens', 'input-tokens', 'cost-detail']) { delete $(id).dataset.value; number(id, id === 'cost-detail' ? '' : '—'); }
     for (const id of ['habit-summary', 'busiest', 'local-error']) text(id, '');
     $('cost-detail').hidden = true;
+    selectedHeatHour = null;
     $('heatmap').replaceChildren();
-    $('models').innerHTML = '<p class="empty">正在统计…</p>';
+    $('models').innerHTML = `<p class="empty">${t('正在统计…')}</p>`;
   } else {
     delete $('cloud-total').dataset.value; number('cloud-total', '—');
     for (const id of ['cloud-range', 'cloud-updated', 'cloud-error', 'breakdown-error']) text(id, '');
     for (const id of ['daily-chart', 'daily-table', 'breakdown-table', 'breakdown-date']) $(id).replaceChildren();
-    $('clients').innerHTML = '<p class="empty">正在统计…</p>';
+    $('clients').innerHTML = `<p class="empty">${t('正在统计…')}</p>`;
     breakdown = null;
   }
 }
-async function load(refresh, viewChanged = false) {
+async function load(refresh, viewChanged = false, live = false) {
   if (tab === 'calculator') return;
   if (refresh) loadLimits(true);
   clearTimeout(refreshTimer); refreshAt = Infinity;
@@ -457,30 +471,30 @@ async function load(refresh, viewChanged = false) {
   let rendered = false;
   if (viewChanged && views.has(viewKey)) render(views.get(viewKey));
   const address = new URL(location.href);
-  address.search = params.toString(); address.searchParams.set('tab', source); history.replaceState(null, '', address);
-  tabControl('refresh', source).disabled = true; tabControl('refresh', source).lastChild.textContent = ' 刷新中';
+  address.search = params.toString(); address.searchParams.set('tab', source); if (CodexI18n.preference !== 'auto') address.searchParams.set('lang', CodexI18n.preference); history.replaceState(null, '', address);
+  tabControl('refresh', source).disabled = true; tabControl('refresh', source).lastChild.textContent = ` ${t('刷新中')}`;
   const section = $(source === 'local' ? 'local-section' : 'cloud-section'); section.setAttribute('aria-busy', 'true');
   function render(data) {
     if (viewChanged && !rendered && source === 'account' && !data.counts?.data) resetPanel(source);
-    if (source === 'local') renderLocal(data); else renderAccount(data);
-    if (data.range) { timezone = data.range.timezone; tabControl('range', source).textContent = `${timestamp(data.range.from)} 至 ${timestamp(data.range.to)}`; tabControl('range', source).title = timezone; }
+    if (source === 'local') renderLocal(data, viewChanged && !rendered); else renderAccount(data);
+    if (data.range) { timezone = data.range.timezone; tabControl('range', source).textContent = t('{from} 至 {to}', { from: timestamp(data.range.from), to: timestamp(data.range.to) }); tabControl('range', source).title = timezone; }
     rendered = true;
   }
   function receive(data) {
     if (current !== sequence) return false;
-    nextDelay = source === 'local' ? (data.error ? retryDelay : 60 * 60 * 1000) : data.error ? retryDelay : Math.min(remoteDelay(data.counts), remoteDelay(data.breakdown));
+    nextDelay = source === 'local' ? (data.error ? retryDelay : $('live-mode').checked ? 1000 : 60 * 60 * 1000) : data.error ? retryDelay : Math.min(remoteDelay(data.counts), remoteDelay(data.breakdown));
     views.set(viewKey, data); if (views.size > 24) views.delete(views.keys().next().value);
     render(data); return true;
   }
   try {
-    if (source === 'local' && !refresh) {
+    if (source === 'local' && !refresh && !live) {
       const cached = await readLocal(params, signal);
       if (!receive(cached)) return;
       // Paint the cached numbers before starting the one-off revalidation.
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     }
-    if (source === 'local' || refresh) params.set('refresh', '1');
-    const fresh = source === 'local' ? await readLocal(params, signal) : await api(`/api/${source}?${params}`, { signal });
+    if (source === 'local' || refresh) params.set('refresh', live ? 'local' : '1');
+    const fresh = source === 'local' && !live ? await readLocal(params, signal) : await api(`/api/${source}?${params}`, { signal });
     receive(fresh);
   } catch (error) {
     if (current !== sequence || error.name === 'AbortError') return;
@@ -490,13 +504,13 @@ async function load(refresh, viewChanged = false) {
   } finally {
     if (current === sequence || source !== tab) {
       section.setAttribute('aria-busy', 'false');
-      tabControl('refresh', source).disabled = false; tabControl('refresh', source).lastChild.textContent = ' 刷新';
+      tabControl('refresh', source).disabled = false; tabControl('refresh', source).lastChild.textContent = ` ${t('刷新')}`;
     }
     if (current === sequence) { refreshAt = Date.now() + nextDelay; armRefreshTimers(); }
   }
 }
 
-function renderLocal(data) {
+function renderLocal(data, resetSelection = false) {
   timezone = data.range.timezone;
   number('total-tokens', compact(data.tokens, 2)); $('total-tokens').title = `${full(data.tokens)} Token`;
   number('total-calls', full(data.calls));
@@ -507,22 +521,34 @@ function renderLocal(data) {
   number('session-detail', full(data.sessions));
   number('cache-detail', compact(data.cached, 2));
   $('cost-detail').hidden = !data.unpricedCalls;
-  number('cost-detail', data.unpricedCalls ? `${full(data.unpricedCalls)} 次未计价` : '');
-  text('local-error', data.error || (data.unreadable || data.malformed ? `${data.unreadable} 个文件、${data.malformed} 条记录不完整` : data.files === 0 ? '未发现本机会话记录' : ''));
-  text('habit-summary', `${data.activeDays} 个活跃日`);
+  number('cost-detail', data.unpricedCalls ? t('{count} 次未计价', { count: full(data.unpricedCalls) }) : '');
+  text('local-error', data.error || (data.unreadable || data.malformed ? t('{files} 个文件、{records} 条记录不完整', { files: data.unreadable, records: data.malformed }) : data.files === 0 ? '未发现本机会话记录' : ''));
+  text('habit-summary', t('{count} 个活跃日', { count: data.activeDays }));
   text('timezone', timezone);
-  text('busiest', data.busiestHour == null ? '暂无记录' : `活跃高峰 ${String(data.busiestHour).padStart(2, '0')}:00-${String(data.busiestHour + 1).padStart(2, '0')}:00`);
-  const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+  const weekdays = language === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['一', '二', '三', '四', '五', '六', '日'];
   const max = Math.max(1, ...data.hours.flat());
   const colors = ['var(--heat-0)', 'var(--heat-1)', 'var(--heat-2)', 'var(--heat-3)', 'var(--heat-4)'];
-  $('heatmap').innerHTML = '<span></span>' + Array.from({ length: 24 }, (_, i) => `<span class="heat-label">${i % 6 === 0 ? String(i).padStart(2, '0') : ''}</span>`).join('') + data.hours.map((hours, day) => `<span class="heat-label">${weekdays[day]}</span>${hours.map((count, hour) => {
-    const label = `周${weekdays[day]} ${String(hour).padStart(2, '0')}:00，${full(count)} 次调用`;
-    return `<button type="button" class="heat-cell" tabindex="${day === 0 && hour === 0 ? 0 : -1}" aria-label="${esc(label)}" title="${esc(label)}" data-label="${esc(label)}" style="background:${colors[count ? Math.max(1, Math.ceil(count / max * 4)) : 0]}"></button>`;
-  }).join('')}`).join('');
-  distribution('models', data.models.map(row => ({ label: row.model, value: row.tokens, suffix: `${compact(row.tokens)} · ${full(row.calls)} 次` })));
+  const heatmap = $('heatmap');
+  if (!heatmap.children.length) {
+    heatmap.innerHTML = '<span></span>' + Array.from({ length: 24 }, (_, i) => `<span class="heat-label">${i % 6 === 0 ? String(i).padStart(2, '0') : ''}</span>`).join('') + weekdays.map(day => `<span class="heat-label">${day}</span>${'<button type="button" class="heat-cell" tabindex="-1"></button>'.repeat(24)}`).join('');
+    resetSelection = true;
+  }
+  const cells = heatmap.querySelectorAll('button');
+  if (resetSelection) {
+    selectedHeatHour = null;
+    cells.forEach((cell, i) => { cell.tabIndex = i === 0 ? 0 : -1; });
+  }
+  data.hours.forEach((hours, day) => hours.forEach((count, hour) => {
+    const cell = cells[day * 24 + hour];
+    const label = t('周{day} {hour}:00，{count} 次调用', { day: weekdays[day], hour: String(hour).padStart(2, '0'), count: full(count) });
+    cell.setAttribute('aria-label', label); cell.title = label; cell.dataset.label = label;
+    cell.style.background = colors[count ? Math.max(1, Math.ceil(count / max * 4)) : 0];
+  }));
+  text('busiest', selectedHeatHour !== null ? cells[selectedHeatHour].dataset.label : data.busiestHour == null ? '暂无记录' : t('活跃高峰 {from}:00-{to}:00', { from: String(data.busiestHour).padStart(2, '0'), to: String(data.busiestHour + 1).padStart(2, '0') }));
+  distribution('models', data.models.map(row => ({ label: row.model, value: row.tokens, suffix: `${compact(row.tokens)} · ${t('{count} 次', { count: full(row.calls) })}` })));
 }
 function distribution(id, rows) {
-  if (!rows.length) { $(id).innerHTML = '<p class="empty">所选范围内暂无记录</p>'; return; }
+  if (!rows.length) { $(id).innerHTML = `<p class="empty">${t('所选范围内暂无记录')}</p>`; return; }
   const max = Math.max(1, ...rows.map(row => row.value || 0));
   $(id).innerHTML = rows.map(row => {
     const values = String(row.suffix ?? full(row.value)).split(' · ');
@@ -537,7 +563,7 @@ function renderAccount(account) {
   timezone = account.range.timezone;
   text('cloud-error', account.counts.error || '');
   if (account.counts.data) renderCounts(account.counts, account.range);
-  else { $('clients').innerHTML = '<p class="empty">客户端统计暂不可用</p>'; }
+  else { $('clients').innerHTML = `<p class="empty">${t('客户端统计暂不可用')}</p>`; }
   text('breakdown-error', account.breakdown.error || '');
   breakdown = account.breakdown.data;
   const previousDate = $('breakdown-date').value;
@@ -561,37 +587,46 @@ function renderLimits(result) {
       if (tab === 'local') load(false, true);
     }
   }
+  if (defaultLocalPeriod && plan) {
+    const value = plan.toLowerCase().startsWith('pro') ? 'quota7' : plan.toLowerCase() === 'plus' ? 'quota5' : 'week';
+    const option = $('period').querySelector(`option[value="${value}"]`);
+    if (!option.disabled) {
+      defaultLocalPeriod = false;
+      $('period').value = value; configurePeriod('local');
+      if (tab === 'local') load(false, true);
+    }
+  }
   for (const [id, seconds] of [['quota-five', 18000], ['quota-week', 604800]]) {
     const window = [codex?.primary, codex?.secondary].find(window => window?.seconds === seconds);
     text(id, window ? `${full(Math.max(0, Math.min(100, 100 - window.usedPercent)))}%` : '—');
-    $(id).title = window ? '剩余额度' : result.data ? '接口未提供此窗口' : '额度暂不可用';
+    $(id).title = t(window ? '剩余额度' : result.data ? '接口未提供此窗口' : '额度暂不可用');
   }
-  if (!result.data) { $('plan').hidden = true; $('limits').innerHTML = '<p class="empty">额度暂不可用</p>'; text('quota-updated', '尚无数据'); return; }
-  text('quota-updated', `${result.cached ? '缓存于' : '更新于'} ${timestamp(result.fetchedAt)}`);
+  if (!result.data) { $('plan').hidden = true; $('limits').innerHTML = `<p class="empty">${t('额度暂不可用')}</p>`; text('quota-updated', '尚无数据'); return; }
+  text('quota-updated', `${t(result.cached ? '缓存于' : '更新于')} ${timestamp(result.fetchedAt)}`);
   const windows = result.data.buckets.flatMap(bucket => [bucket.primary, bucket.secondary].filter(Boolean).map(window => ({ ...window, name: bucket.name })));
   $('limits').innerHTML = windows.length ? windows.map(window => {
-    const duration = window.seconds == null ? '额度窗口' : window.seconds % 86400 === 0 ? `${window.seconds / 86400} 天` : `${Number((window.seconds / 3600).toFixed(1))} 小时`;
+    const duration = window.seconds == null ? t('额度窗口') : window.seconds % 86400 === 0 ? t('{count} 天窗口', { count: window.seconds / 86400 }) : t('{count} 小时窗口', { count: Number((window.seconds / 3600).toFixed(1)) });
     const percent = Math.max(0, Math.min(100, 100 - window.usedPercent));
-    return `<article class="limit-card"><h3>${esc(window.name)}</h3><div class="limit-top"><span>${duration}窗口</span><strong>${full(percent)}<small>%</small></strong></div><div class="progress ${percent <= 20 ? 'warning' : ''}" role="progressbar" aria-label="${esc(window.name)} ${duration}剩余额度" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${percent}%"></span></div><p class="metadata">${window.resetsAt ? `${timestamp(window.resetsAt * 1000)} 重置` : '未提供重置时间'}</p></article>`;
-  }).join('') : '<p class="empty">账号未返回额度窗口</p>';
+    return `<article class="limit-card"><h3>${esc(window.name)}</h3><div class="limit-top"><span>${duration}</span><strong>${full(percent)}<small>%</small></strong></div><div class="progress ${percent <= 20 ? 'warning' : ''}" role="progressbar" aria-label="${esc(t('{name} {window}剩余额度', { name: window.name, window: duration }))}" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${percent}%"></span></div><p class="metadata">${window.resetsAt ? t('{time} 重置', { time: timestamp(window.resetsAt * 1000) }) : t('未提供重置时间')}</p></article>`;
+  }).join('') : `<p class="empty">${t('账号未返回额度窗口')}</p>`;
 }
 
 function renderResetCredits(result) {
   const details = result.resetCredits, data = details?.data;
   const count = details?.error ? result.data?.resetCount ?? data?.availableCount : data?.availableCount ?? result.data?.resetCount;
   text('quota-resets', count == null ? '—' : full(count));
-  $('quota-resets').title = '剩余重置次数';
+  $('quota-resets').title = t('剩余重置次数');
   text('reset-error', details?.error || '');
-  text('reset-updated', details?.fetchedAt ? `${details.cached ? '缓存于' : '更新于'} ${timestamp(details.fetchedAt)}` : '');
+  text('reset-updated', details?.fetchedAt ? `${t(details.cached ? '缓存于' : '更新于')} ${timestamp(details.fetchedAt)}` : '');
   const credits = data?.credits;
   if (!credits?.length) {
-    $('reset-credits').innerHTML = `<li><span>${count === 0 ? '暂无剩余重置' : '过期时间暂不可用'}</span></li>`;
+    $('reset-credits').innerHTML = `<li><span>${t(count === 0 ? '暂无剩余重置' : '过期时间暂不可用')}</span></li>`;
     return;
   }
-  const format = new Intl.DateTimeFormat('zh-CN', { timeZone: timezone === 'Local' ? undefined : timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  const format = new Intl.DateTimeFormat(language, { timeZone: timezone === 'Local' ? undefined : timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
   const sorted = credits.toSorted((a, b) => (a.expiresAt ? Date.parse(a.expiresAt) : Infinity) - (b.expiresAt ? Date.parse(b.expiresAt) : Infinity));
-  $('reset-credits').innerHTML = sorted.map((credit, i) => `<li><span>重置 ${i + 1}</span>${credit.expiresAt ? `<time datetime="${esc(credit.expiresAt)}" title="${esc(timezone)}">${esc(format.format(new Date(credit.expiresAt)))} 到期</time>` : '<span>未提供过期时间</span>'}</li>`).join('');
-  if (count > credits.length) $('reset-credits').insertAdjacentHTML('beforeend', `<li><span>另 ${full(count - credits.length)} 次未返回明细</span></li>`);
+  $('reset-credits').innerHTML = sorted.map((credit, i) => `<li><span>${t('重置 {number}', { number: i + 1 })}</span>${credit.expiresAt ? `<time datetime="${esc(credit.expiresAt)}" title="${esc(timezone)}">${esc(t('{time} 到期', { time: format.format(new Date(credit.expiresAt)) }))}</time>` : `<span>${t('未提供过期时间')}</span>`}</li>`).join('');
+  if (count > credits.length) $('reset-credits').insertAdjacentHTML('beforeend', `<li><span>${t('另 {count} 次未返回明细', { count: full(count - credits.length) })}</span></li>`);
 }
 
 function renderCounts(result, range) {
@@ -599,8 +634,8 @@ function renderCounts(result, range) {
   const known = rows.filter(row => finite(row.totals.text_total_tokens));
   const total = known.reduce((sum, row) => sum + row.totals.text_total_tokens, 0);
   number('cloud-total', known.length ? compact(total) : '—');
-  text('cloud-range', `${range.startDate.slice(5)} 至 ${range.endDate.slice(5)}`);
-  text('cloud-updated', `${result.cached ? '缓存于' : '更新于'} ${timestamp(result.fetchedAt)}`);
+  text('cloud-range', t('{from} 至 {to}', { from: range.startDate.slice(5), to: range.endDate.slice(5) }));
+  text('cloud-updated', `${t(result.cached ? '缓存于' : '更新于')} ${timestamp(result.fetchedAt)}`);
   const byDate = new Map(rows.map(row => [row.date, row]));
   const dates = [];
   for (let day = new Date(`${range.startDate}T00:00:00Z`), end = new Date(`${range.endDate}T00:00:00Z`); day <= end; day.setUTCDate(day.getUTCDate() + 1)) dates.push(day.toISOString().slice(0, 10));
@@ -612,7 +647,7 @@ function renderCounts(result, range) {
     const value = totals?.text_total_tokens;
     const isKnown = finite(value);
     const complete = keys.every(key => finite(totals?.[key]));
-    const tooltip = `${date}\n${isKnown ? full(value) + ' Token' : '未返回 Token 数据'}`;
+    const tooltip = `${date}\n${isKnown ? full(value) + ' Token' : t('未返回 Token 数据')}`;
     let segments = '';
     if (isKnown) {
       segments = complete ? keys.map((key, i) => `<span class="chart-segment" style="height:${totals[key] / max * 175}px;background:${colors[i]}"></span>`).join('') : `<span class="chart-segment" style="height:${value / max * 175}px;background:var(--muted)"></span>`;
@@ -620,7 +655,7 @@ function renderCounts(result, range) {
     return `<div tabindex="0" class="chart-day ${isKnown ? '' : 'missing'}" data-tooltip="${esc(tooltip)}" aria-label="${esc(tooltip)}"><div class="chart-bars" style="height:${isKnown ? Math.max(value / max * 175, value === 0 ? 1 : 0) : 6}px">${segments}</div><span class="chart-label" data-date="${date}"></span></div>`;
   }).join('');
   fitChartLabels();
-  $('daily-chart').setAttribute('aria-label', `每日 Token 用量，${known.length} 天已返回数据，已知合计 ${full(total)} Token。完整数字见每日明细。`);
+  $('daily-chart').setAttribute('aria-label', t('每日 Token 用量，{days} 天已返回数据，已知合计 {tokens} Token。完整数字见每日明细。', { days: known.length, tokens: full(total) }));
   $('daily-table').innerHTML = dates.map(date => `<tr><td>${date}</td>${[...keys, 'text_total_tokens'].map(key => `<td>${full(byDate.get(date)?.totals[key])}</td>`).join('')}</tr>`).join('');
   const clients = new Map();
   for (const row of rows) for (const client of row.clients) {
@@ -629,7 +664,7 @@ function renderCounts(result, range) {
     clients.set(client.client, current);
   }
   const labels = { CODEX_CLI: 'Codex CLI', CODEX_DESKTOP_APP: 'Codex 桌面端', CODEX_UNKNOWN_DEFAULT: '其他 / 未识别', CODEX_WORK_WEB: 'Work 网页端' };
-  distribution('clients', [...clients.values()].sort((a, b) => b.value - a.value).map(row => ({ label: labels[row.label] || row.label, value: row.known ? row.value : null, suffix: `${row.known ? full(row.value) : '—'}${row.missing ? '（部分缺失）' : ''}` })));
+  distribution('clients', [...clients.values()].sort((a, b) => b.value - a.value).map(row => ({ label: labels[row.label] ? t(labels[row.label]) : row.label, value: row.known ? row.value : null, suffix: `${row.known ? full(row.value) : '—'}${row.missing ? t('（部分缺失）') : ''}` })));
 }
 function fitChartLabels() {
   const chart = $('daily-chart'), labels = [...chart.querySelectorAll('.chart-label')];
@@ -655,20 +690,20 @@ function renderBreakdown() {
   const complete = models.every(model => finite(model.value) && model.value >= 0);
   const total = complete ? models.reduce((sum, model) => sum + model.value, 0) : null;
   if (models.length && total === 0) {
-    $('breakdown-table').innerHTML = '<tr><td colspan="3" class="empty">当日暂无用量</td></tr>';
+    $('breakdown-table').innerHTML = `<tr><td colspan="3" class="empty">${t('当日暂无用量')}</td></tr>`;
     return;
   }
   $('breakdown-table').innerHTML = models.length ? models.map(model => {
     const share = finite(total) && total > 0 ? model.value / total * 100 : null;
     return `<tr><td>${esc(model.model)}</td><td>${esc(model.speed)}</td><td>${share == null ? '—' : `${share.toFixed(3)}%`}</td></tr>`;
-  }).join('') : '<tr><td colspan="3" class="empty">暂无模型用量记录</td></tr>';
+  }).join('') : `<tr><td colspan="3" class="empty">${t('暂无模型用量记录')}</td></tr>`;
 }
 
 const calculatorFields = ['input', 'cached', 'write', 'output'];
 const calculatorPriceKeys = ['inputCostPerToken', 'cacheReadCostPerToken', 'cacheWriteCostPerToken', 'outputCostPerToken'];
 const calculatorStorageKey = 'codex-tally-calculator-prices';
 let customPrices = [null, null, null, null];
-let calculatorPrices, calculatorPricesRequest, calculatorRequest;
+let calculatorPrices, calculatorPricesRequest, calculatorRequest, calculatorRange;
 try {
   const saved = JSON.parse(localStorage.getItem(calculatorStorageKey));
   if (Array.isArray(saved) && saved.length === 4 && saved.every(value => value === null || (finite(value) && value >= 0))) customPrices = saved;
@@ -724,7 +759,10 @@ async function loadCalculatorPrices() {
     const result = await api('/api/pricing', { signal: request.signal });
     if (request.signal.aborted) return;
     calculatorPrices = result.models;
-    for (const name of Object.keys(calculatorPrices).sort()) $('calculator-model').add(new Option(name, name));
+    const select = $('calculator-model'), selected = select.value;
+    select.replaceChildren(select.options[0]);
+    for (const name of Object.keys(calculatorPrices).sort()) select.add(new Option(name, name));
+    select.value = Object.hasOwn(calculatorPrices, selected) ? selected : '';
   } catch (error) {
     if (error.name !== 'AbortError') text('calculator-storage', '预设价格暂不可用，可手填单价。');
   } finally { if (calculatorPricesRequest === request) calculatorPricesRequest = null; }
@@ -746,7 +784,7 @@ $('calculator-form').addEventListener('input', event => {
     }
   } else {
     formatTokenInput(event.target);
-    calculatorRequest?.abort(); text('calculator-range', '');
+    calculatorRequest?.abort(); calculatorRange = null; text('calculator-range', '');
   }
   calculate();
 });
@@ -763,7 +801,7 @@ for (const field of calculatorFields) {
 function clearCalculatorUsage() {
   calculatorRequest?.abort();
   for (const field of calculatorFields) $(`calc-${field}-tokens`).value = '0';
-  text('calculator-range', ''); calculate();
+  calculatorRange = null; text('calculator-range', ''); calculate();
 }
 $('calculator-clear').addEventListener('click', clearCalculatorUsage);
 $('calculator-import').disabled = false;
@@ -779,7 +817,8 @@ $('calculator-import').addEventListener('click', async () => {
     if (data.error) throw new Error(data.error);
     if (!calculatorFields.every(field => Number.isSafeInteger(data[field]) && data[field] >= 0)) throw new Error('本机用量不完整，请刷新后重试。');
     for (const field of calculatorFields) $(`calc-${field}-tokens`).value = full(data[field]);
-    text('calculator-range', `${timestamp(data.range.from)} 至 ${timestamp(data.range.to)}`);
+    calculatorRange = data.range;
+    renderCalculatorRange();
     calculate();
   } catch (error) {
     if (error.name !== 'AbortError') text('calculator-error', error.message);
@@ -788,10 +827,44 @@ $('calculator-import').addEventListener('click', async () => {
   }
 });
 setCalculatorPrices(customPrices);
+// Carry the draft through a language reload, then consume it once.
+const calculatorDraft = history.state?.calculatorDraft;
+if (calculatorDraft) {
+  const state = { ...history.state };
+  delete state.calculatorDraft;
+  history.replaceState(state, '');
+  for (const field of calculatorFields) {
+    for (const kind of ['tokens', 'price']) {
+      const id = `calc-${field}-${kind}`;
+      if (typeof calculatorDraft.values?.[id] === 'string') $(id).value = calculatorDraft.values[id];
+    }
+  }
+  if (typeof calculatorDraft.model === 'string' && calculatorDraft.model) {
+    $('calculator-model').add(new Option(calculatorDraft.model, calculatorDraft.model));
+    $('calculator-model').value = calculatorDraft.model;
+  }
+  calculatorRange = calculatorDraft.range;
+  calculate();
+}
+window.addEventListener('codex-language-change', () => {
+  if ($('dashboard').hidden) return;
+  const values = {};
+  for (const field of calculatorFields) {
+    for (const kind of ['tokens', 'price']) {
+      const id = `calc-${field}-${kind}`;
+      values[id] = $(id).value;
+    }
+  }
+  history.replaceState({ ...history.state, calculatorDraft: { values, model: $('calculator-model').value, range: calculatorRange } }, '');
+});
+function renderCalculatorRange() {
+  if (calculatorRange) text('calculator-range', t('{from} 至 {to}', { from: timestamp(calculatorRange.from), to: timestamp(calculatorRange.to) }));
+}
 
 (async () => {
   try {
     const status = await api('/api/session'); timezone = status.timezone;
+    renderCalculatorRange();
     $('share-link').hidden = !status.publicShare;
     const query = new URLSearchParams(location.search);
     tab = tabs.includes(query.get('tab')) ? query.get('tab') : 'local';

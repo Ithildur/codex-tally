@@ -3,13 +3,16 @@ package dashboard
 import (
 	"context"
 	json "encoding/json/v2"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func testApplication(t *testing.T) *application {
@@ -21,6 +24,65 @@ func testApplication(t *testing.T) *application {
 	}
 	t.Cleanup(func() { cancel(); app.local.wg.Wait() })
 	return app
+}
+func TestLocalPollingRefresh(t *testing.T) {
+	app := testApplication(t)
+	if err := atomicJSON(filepath.Join(app.config.Root, "auth.json"), map[string]any{"tokens": credential{"test-access", "test-account"}}); err != nil {
+		t.Fatal(err)
+	}
+	var upstreamCalls atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upstreamCalls.Add(1)
+		fmt.Fprintf(w, `{"plan_type":"pro","rate_limit":{"secondary_window":{"used_percent":10,"limit_window_seconds":604800,"reset_at":%d}}}`, time.Now().Add(24*time.Hour).Unix())
+	}))
+	defer upstream.Close()
+	app.account.base = upstream.URL + "/"
+	poll := func() localUsage {
+		t.Helper()
+		w := httptest.NewRecorder()
+		app.localUsage(w, httptest.NewRequest("GET", "/api/local?period=quota7&refresh=local", nil))
+		var usage localUsage
+		if w.Code != 200 {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &usage); err != nil {
+			t.Fatal(err)
+		}
+		return usage
+	}
+	if poll().Calls != 0 {
+		t.Fatal("new store should be empty")
+	}
+	dir := filepath.Join(app.config.Root, "sessions")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "live.jsonl")
+	log := fmt.Sprintf(`{"timestamp":%q,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":100,"output_tokens":20,"total_tokens":120},"last_token_usage":{"input_tokens":100,"output_tokens":20,"total_tokens":120}}}}`, time.Now().Add(-time.Second).Format(time.RFC3339Nano)) + "\n"
+	if err := os.WriteFile(path, []byte(log), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if usage := poll(); usage.Calls != 1 || usage.Tokens != 120 {
+		t.Fatalf("new local data not reflected: %+v", usage)
+	}
+	before, err := os.Stat(app.local.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	poll()
+	after, err := os.Stat(app.local.path)
+	if err != nil || !os.SameFile(before, after) || !before.ModTime().Equal(after.ModTime()) {
+		t.Fatal("unchanged poll rewrote disk cache", err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if poll().Calls != 0 {
+		t.Fatal("deleted session remained in live usage")
+	}
+	if upstreamCalls.Load() != 1 {
+		t.Fatal("local polling forced remote quota refresh", upstreamCalls.Load())
+	}
 }
 func TestAuthenticationAndForwarding(t *testing.T) {
 	app := testApplication(t)

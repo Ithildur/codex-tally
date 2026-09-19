@@ -57,6 +57,8 @@ PUBLIC_SHARE=1 ./codex-tally
 
 主题参数为 `theme=auto`（默认）、`light` 或 `dark`。已有查询参数时用 `&theme=dark` 追加。
 
+语言参数为 `lang=zh-CN` 或 `lang=en`，例如 `/share/tokens.svg?theme=dark&lang=en`。未传语言的旧链接保持中文。分享面板生成的链接会携带当前界面语言，网页与 SVG 一致。
+
 组合顺序固定为 `tokens,calls,cache,models`；不传 `components` 时显示全部四项，空值、重复项和未知项返回 400。数值等宽排列，模型表占整行，窄屏转为单列。
 
 ## 嵌入

@@ -1,5 +1,7 @@
 # Codex Tally
 
+中文 · [English](README.en.md)
+
 本机 Codex 用量仪表盘。查看 Token、费用估算、活跃时段和账号额度，也可以把选定的统计导出到 GitHub Pages。
 
 - Windows、Linux、macOS，单个可执行文件。
@@ -7,6 +9,7 @@
 - 独立费用计算器，可手填 Token 或导入本机用量，自定义模型单价。
 - 分享单个组件或组合面板，支持网页、SVG、Markdown 和 iframe。
 - GitHub Pages 展示离线快照，本机无需开放端口。
+- 仪表盘和 Pages 支持中英文，默认跟随浏览器语言，可手动切换；分享网页和 SVG 保留选定语言。
 
 ## 安装
 
@@ -40,7 +43,7 @@ Windows 将输出文件名改为 `codex-tally.exe`。使用 Pages 同步时，�
 ./codex-tally
 ```
 
-Windows PowerShell 使用 `.\codex-tally.exe`。打开 <http://localhost:4318>，使用启动日志中的“本次登录密码”登录。每次启动都会随机生成 12 位密码，不写入文件。
+Windows PowerShell 使用 `.\codex-tally.exe`。打开 <http://localhost:4318>，使用启动日志中的登录密码登录（中文提示为“本次登录密码”，英文为 `Login password for this run`）。每次启动都会随机生成 12 位密码，不写入文件。
 
 需要固定密码时，设置 `CODEX_TALLY_PASSWORD`（至少 8 个字符）：
 

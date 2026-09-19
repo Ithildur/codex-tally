@@ -55,10 +55,13 @@ codex-tally/
   codex-tally          # Windows 为 codex-tally.exe
   LICENSE
   README.md
+  README.en.md
   CONTRIBUTING.md
   SECURITY.md
   docs/
 ```
+
+英文使用文档为 `README.en.md` 和 `docs/guide.en.md`，与中文文档一同打包。
 
 解压后进入该目录启动程序，默认缓存保存在该目录下的 `.state-codex-tally/`。
 

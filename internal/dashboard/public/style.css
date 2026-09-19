@@ -106,7 +106,9 @@ svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width:
 .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 0 0 24px; margin-bottom: 28px; border-bottom: 1px solid var(--line); }
 .period-control, .custom-control { display: flex; align-items: center; gap: 10px; }
 .toolbar label { color: var(--muted); font-size: .75rem; white-space: nowrap; }
-.toolbar select { width: 116px; font-size: .8125rem; }
+.toolbar select { width: 184px; font-size: .8125rem; }
+.toolbar .live-control { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.live-control input { width: 16px; min-height: 16px; margin: 0; accent-color: var(--accent); }
 .custom-control { flex-wrap: wrap; }
 .custom-control input { max-width: 225px; min-width: 0; }
 .range { font-family: var(--mono); font-size: .6875rem; white-space: nowrap; }
@@ -180,6 +182,7 @@ section { margin-bottom: 28px; }
 .local-stats dt { color: var(--muted); font-size: .75rem; margin-bottom: 10px; }
 .local-stats dd { margin: 0; font: 1.375rem/1.3 var(--mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 #local-section [data-flap-label] { font-family: var(--mono); font-size: .875rem; font-weight: 500; gap: .1em; color: var(--text); }
+#local-section .local-stats [data-flap-label] { font-size: min(.875rem, calc(100cqi / var(--digits) / 1.3)); }
 .local-stats dd.split-number { font-family: Arial, "Noto Sans SC", sans-serif; font-size: min(1.5rem, calc(100cqi / var(--digits) / .94)); font-weight: 600; gap: .06em; }
 .data-details { margin-top: 18px; color: var(--muted); font-size: .6875rem; }
 summary { width: fit-content; padding: 4px 0; }
@@ -293,6 +296,10 @@ tbody tr:hover { background: var(--panel); }
 .login-form input { width: 100%; height: 46px; }
 .login-form button { justify-content: space-between; width: 100%; margin-top: 16px; min-height: 44px; }
 .boot { min-height: 100vh; display: grid; place-items: center; color: var(--muted); }
+.language-select { width: auto; max-width: 100px; min-height: 32px; padding: 4px 6px; color: var(--muted); font-size: .75rem; }
+.language-login { position: absolute; top: 24px; right: var(--page-gutter); }
+:root { --cost-label: '费用 $ '; }
+:root[lang="en"] { --cost-label: 'Cost $ '; }
 .analysis-overlay { inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 32px 24px; border: 0; outline: none; color: var(--text); background: transparent; overflow: auto; }
 .analysis-overlay[open] { display: grid; place-items: center; }
 .analysis-overlay::backdrop { background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(5px); }
@@ -380,7 +387,7 @@ body:has(.analysis-overlay[open]) { overflow: hidden; }
   .calculator-toolbar select { flex: 1; min-width: 0; width: auto; }
   .calculator-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding-block: 16px; }
   .calculator-row label, .calculator-row output { grid-column: 1 / -1; }
-  .calculator-row output::before { content: '费用 $ '; color: var(--muted); font-size: .75rem; }
+  .calculator-row output::before { content: var(--cost-label); color: var(--muted); font-size: .75rem; }
   .calculator-row .token-magnitude { grid-column: 1; grid-row: 3; margin-top: -4px; }
   .calculator-row output { grid-column: 2; grid-row: 3; }
   .calculator-columns span:first-child, .calculator-columns span:last-child { display: none; }
@@ -394,19 +401,19 @@ body:has(.analysis-overlay[open]) { overflow: hidden; }
   .share-preview-panel { padding: 12px 16px 16px; }
   .share-preview { min-height: 180px; }
   .topbar-inner { padding-top: 8px; gap: 4px 18px; }
-  .brand { padding-block: 0; }
+  .brand { padding-block: 0; grid-column: 1 / -1; }
   .brand a { gap: 9px; }
   .brand-name { font-size: .9375rem; }
   .brand .brand-mark { width: 28px; height: 28px; }
-  .tabs { grid-column: 1 / -1; width: 100%; min-height: 44px; gap: 22px; }
-  .quota-control { grid-row: 3; grid-column: 1 / -1; width: 100%; padding-bottom: 8px; }
+  .tabs { grid-row: 3; grid-column: 1 / -1; width: 100%; min-height: 44px; gap: 22px; }
+  .quota-control { grid-row: 4; grid-column: 1 / -1; width: 100%; padding-bottom: 8px; }
   #quota-toggle { width: 100%; justify-content: space-between; padding-inline: 0; gap: 10px; flex-wrap: wrap; }
   .quota-summary { gap: 6px; }
   .quota-summary > span { font-size: .6875rem; }
-  .quota-popover { max-height: calc(100dvh - 190px); padding: 18px; }
+  .quota-popover { max-height: calc(100dvh - 230px); padding: 18px; }
   .limits { grid-template-columns: 1fr; }
   .tabs button { font-size: .8125rem; }
-  .top-actions { gap: 0; }
+  .top-actions { grid-column: 1 / -1; grid-row: 2; justify-self: start; gap: 0; }
   .top-actions .quiet { font-size: .6875rem; padding-inline: 7px; }
   .toolbar { padding-bottom: 16px; gap: 12px; }
   .range { order: 4; width: 100%; font-size: .625rem; }

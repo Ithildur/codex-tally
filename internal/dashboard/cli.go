@@ -17,7 +17,14 @@ import (
 )
 
 // Run executes a CLI command or starts the dashboard with listener options.
-func Run(args []string, version string) error {
+func Run(args []string, version string) (err error) {
+	defer func() {
+		if err != nil {
+			if message := consoleText(err.Error()); message != err.Error() {
+				err = commandError{cause: err, message: message}
+			}
+		}
+	}()
 	if len(args) > 0 && (args[0] == "version" || args[0] == "--version") {
 		if len(args) != 1 {
 			return errors.New("unexpected version arguments")

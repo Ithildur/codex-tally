@@ -205,7 +205,7 @@ func buildPages(input, output string) error {
 			return err
 		}
 	}
-	for name, source := range map[string]string{"index.html": "pages.html", "pages.js": "pages.js", "pages.css": "pages.css", "embed.js": "embed.js", "favicon.svg": "favicon.svg"} {
+	for name, source := range map[string]string{"index.html": "pages.html", "pages.js": "pages.js", "pages.css": "pages.css", "embed.js": "embed.js", "favicon.svg": "favicon.svg", "i18n.js": "i18n.js", "i18n.json": "i18n.json"} {
 		raw, err := webFiles.ReadFile("public/" + source)
 		if err != nil {
 			return err

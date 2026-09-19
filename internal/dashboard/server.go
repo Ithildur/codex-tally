@@ -168,7 +168,7 @@ func sendError(w http.ResponseWriter, status int, message string) {
 
 func (a *application) handler() http.Handler {
 	mux := http.NewServeMux()
-	assets := map[string]string{"/": "index.html", "/app.js": "app.js", "/style.css": "style.css", "/favicon.svg": "favicon.svg"}
+	assets := map[string]string{"/": "index.html", "/app.js": "app.js", "/style.css": "style.css", "/favicon.svg": "favicon.svg", "/i18n.js": "i18n.js", "/i18n.json": "i18n.json"}
 	for path, file := range assets {
 		pattern := "GET " + path
 		if path == "/" {
@@ -180,7 +180,7 @@ func (a *application) handler() http.Handler {
 				sendError(w, 500, "页面无法读取")
 				return
 			}
-			types := map[string]string{".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml"}
+			types := map[string]string{".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".json": "application/json; charset=utf-8"}
 			w.Header().Set("Content-Type", types[filepath.Ext(file)])
 			_, _ = w.Write(raw)
 		})
@@ -323,7 +323,7 @@ func (a *application) localUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data, refreshing, message := a.local.view()
-	if data == nil || r.URL.Query().Get("refresh") == "1" {
+	if refresh := r.URL.Query().Get("refresh"); data == nil || refresh == "1" || refresh == "local" {
 		select {
 		case <-a.local.refresh():
 		case <-r.Context().Done():
@@ -337,7 +337,7 @@ func (a *application) localUsage(w http.ResponseWriter, r *http.Request) {
 	}
 	prices, err := loadPrices(a.config.Home, a.config.Pricing)
 	if err != nil {
-		log.Printf("价格读取失败: %v", err)
+		log.Printf(consoleText("价格读取失败: %v"), err)
 		sendError(w, 500, "价格文件无法读取，请检查价格配置")
 		return
 	}
@@ -386,9 +386,9 @@ func run(host, port string) error {
 	}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
-	log.Printf("Codex 用量仪表盘：%s", cmp.Or(app.config.Origin, "http://"+listener.Addr().String()))
+	log.Printf(consoleText("Codex 用量仪表盘：%s"), cmp.Or(app.config.Origin, "http://"+listener.Addr().String()))
 	if generated {
-		log.Printf("本次登录密码：%s", password)
+		log.Printf(consoleText("本次登录密码：%s"), password)
 	}
 	password = ""
 	select {

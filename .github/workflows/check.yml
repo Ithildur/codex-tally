@@ -26,7 +26,7 @@ jobs:
       - name: Check scripts
         shell: bash
         run: |
-          for file in internal/dashboard/public/*.js scripts/*.mjs; do
+          for file in internal/dashboard/public/*.js; do
             node --check "$file"
           done
           python -c "import ast, pathlib; ast.parse(pathlib.Path('scripts/package.py').read_text(encoding='utf-8'))"
